@@ -132,8 +132,18 @@ vec2 sdfWorld(in vec3 pos){
     if (lamps_<WORLD_RES) m=MAT_CONCRETE;
     if (pavement_<WORLD_RES) m=MAT_CONCRETE;
 
+    vec3 qcarsL = vec3(mod(-pos.x,20.0)-0.8,
+                   pos.y,
+                   mod(abs(pos.z+u_time*5.0),2.0)-1.);
+    vec3 qcarsR = vec3(mod(pos.x,20.0)-0.8,
+                   pos.y,
+                   mod(abs(pos.z-u_time*5.0),2.0)-1.);
 
-    float city_ = opUnion(opUnion(b_,pavement_), lamps_);
+    float carsL = sdRoundBox(qcarsL, vec3(.12,.12,.3),0.3);
+    float carsR = sdRoundBox(qcarsR, vec3(.12,.12,.3),0.3);
+    float cars_ = opUnion(carsL,carsR);
+
+    float city_ = opUnion(opUnion(opUnion(b_,pavement_), lamps_),cars_);
     pos -= vec3(.0,map(u_time,.0,5.0,-2.2,.3),-6.0);
 
     float p1 = sdBox(pos-vec3(-0.7,0.95,.0),vec3(0.05,0.95,0.05));
@@ -219,7 +229,7 @@ float castSoftShadow(in vec3 ro, vec3 rd){
  * */
 float getAO(in vec3 ro, vec3 normal){
     float occ=0.0;
-    float weight=1.0;
+    float weight=1.2;
     for (int i=0; i<8; i++){
         float len = 0.01+0.02*float(i*i);
         float dist = sdfWorld(ro+normal*len).x;
@@ -283,9 +293,9 @@ vec3 getColor(vec3 pos, vec3 nor,vec3 rd, float material_id){
 
     vec3 col = mate*getMaterial(pos,nor,material_id);
     col *= ao;
-    col += mate*vec3(5.0,3.0,2.0)*sun_dif*sun_shadow*ao;
+    col += mate*vec3(5.0,3.0,2.0)*sun_dif*sun_shadow;
     col += mate*vec3(0.5,0.8,0.9)*sky_dif;
-    col += mate*vec3(0.7,0.3,0.2)*bou_dif;
+    col *= ao;
     col *= sunrise;
 
     return col;
