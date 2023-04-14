@@ -2,6 +2,8 @@
 
 C++ tools for creating GLSL intros (demos up to 64KB).
 
+!(screen-dev.png)[Development Screenshot]
+
 ## How to use
 
 Compile and run:
