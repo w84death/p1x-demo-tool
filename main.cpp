@@ -14,11 +14,14 @@
 #include <GL/glew.h>
 #include <SDL2/SDL_opengl.h>
 
-
 // Setup (360p and half resolution shader rendering)
 const float windowWidth = 640.0f;
 const float windowHeight = 360.0f;
 const float resolutionPercentage = 0.5f;
+
+// Variables
+Uint32 frameStart;
+int frameTime;
 
 // Function prototypes
 std::string readFile(const std::string& filePath);
@@ -114,6 +117,7 @@ int main(int argc, char* argv[]) {
   glBindVertexArray(0);
 
   float startTime = SDL_GetTicks() / 1000.0f;
+  float lastTime = startTime;
   GLint timeUniformLocation = glGetUniformLocation(shaderProgram, "u_time");
 
   // Render loop
@@ -121,15 +125,35 @@ int main(int argc, char* argv[]) {
   SDL_Event event;
 
   while (running) {
+    frameStart = SDL_GetTicks();
     while (SDL_PollEvent(&event)) {
       if (event.type == SDL_QUIT) {
         running = false;
+      } else if (event.type == SDL_KEYDOWN) {
+        switch (event.key.keysym.sym) {
+          case SDLK_ESCAPE:
+            running = false;
+            break;
+          // Handle other keys here if needed
+          default:
+            break;
+        }
       }
     }
 
+    // Calculate FPS and frame time
     float currentTime = SDL_GetTicks() / 1000.0f;
-    float time = currentTime - startTime;
-    glUniform1f(timeUniformLocation, time);
+    float deltaTime = currentTime - lastTime;
+    float introTime = currentTime - startTime;
+    lastTime = currentTime;
+    int fps = static_cast<int>(1.0f / deltaTime);
+    int frameMs = static_cast<int>(deltaTime * 1000);
+
+    // Print FPS and frame time to console
+    std::cout << "FPS: " << fps << " | " << frameMs << " ms" << " --- INTRO TIME: " << introTime << "s ---" << std::endl;
+
+    // Send timer to the shader
+    glUniform1f(timeUniformLocation, introTime);
 
     render(shaderProgram, VAO);
     SDL_GL_SwapWindow(window);
