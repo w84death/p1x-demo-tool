@@ -1,18 +1,18 @@
 #!/bin/bash
 
-shader_demo_executable="./demo"
+demo_executable="./demo"
 shader_file="shader.glsl"
 
-kill_intro() {
-  pkill -f "$intro_executable"
+kill_demo() {
+  pkill -f "$demo_executable"
 }
 
 watch_shader() {
   inotifywait -m -e close_write,moved_to,create "$shader_file" |
   while read -r directory event filename; do
-    echo "Shader file changed, restarting shader_demo..."
-    kill_intro
-    $intro_executable & disown
+    echo "Shader file changed, restarting demo..."
+    kill_demo
+    $demo_executable & disown
   done
 }
 
@@ -23,8 +23,7 @@ if ! command -v inotifywait >/dev/null 2>&1; then
 fi
 
 # Start the initial instance of demo
-kill_intro
-$intro_executable & disown
+$demo_executable & disown
 
 # Start watching the shader file
 watch_shader

@@ -105,19 +105,29 @@ vec2 sdfWorld(in vec3 pos){
     float ground = pos.y+0.1;
 
 
-    vec3 qb = vec3(mod(pos.x,20.0)-10.0,
+    vec3 qb = vec3(mod(abs(pos.x),20.0)-10.0,
                    pos.y,
-                   mod(pos.z,10.0)-5.0);
+                   mod(abs(pos.z),10.0)-5.0);
 
+    vec2 bid = vec2(floor(abs(pos.x)/20.0)-10.0,
+                   floor(abs(pos.z)/10.0)-5.0);
 
-    vec2 bid=vec2(floor(abs(pos.x)/20.0),
-                floor(abs(pos.z)/10.0));
-
-    float bheight = 2.0+(rnd(bid)*25.0)*u_fft;
+    float bheight = 2.0+10.0*abs(sin(u_time+rnd(bid)));
     float b_ = sdRoundBox(qb,vec3(6.0,bheight,3.0),0.4);
 
     if (b_<WORLD_RES) m=MAT_CITY;
 
+    vec3 qlamps = vec3(mod(abs(pos.x),10.0)-2.0,
+                   pos.y,
+                   mod(abs(pos.z),2.0)-1.0);
+
+    float lampBase = sdBox(qlamps,vec3(0.02,3.0,0.02));
+    float lampLed = sdBox(qlamps-vec3(-0.2,3.0,0.0),vec3(0.3,0.05,0.02));
+    float lamps_ = opUnion(lampBase,lampLed);
+
+    if (lamps_<WORLD_RES) m=MAT_CONCRETE;
+
+    float city_ = opUnion(b_, lamps_);
     pos -= vec3(.0,map(u_time,.0,5.0,-2.2,.3),-6.0);
 
     float p1 = sdBox(pos-vec3(-0.7,0.95,.0),vec3(0.05,0.95,0.05));
@@ -144,7 +154,7 @@ vec2 sdfWorld(in vec3 pos){
     float p1x_=opUnion(p_,opUnion(i_,x_));
     if (p1x_<WORLD_RES) m=MAT_DARKBLUE;
 
-    float world=opUnion(ground,opUnion(b_,p1x_));
+    float world=opUnion(ground,opUnion(city_,p1x_));
 
     return vec2(world,m);
 }
