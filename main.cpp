@@ -26,6 +26,9 @@ std::string shaderFileName = "shader.glsl";
 // Application variables
 Uint32 frameStart;
 int frameTime;
+bool isPlaying = true;
+int seekAmount = 1000;
+
 
 // Function prototypes
 std::string readFile(const std::string& filePath);
@@ -101,11 +104,11 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
-  // Load .mod file
-  std::string modFileName = "music.mod";
-  Mix_Music* music = Mix_LoadMUS(modFileName.c_str());
+  // Load music file
+  std::string musicFileName = "music.mp3";
+  Mix_Music* music = Mix_LoadMUS(musicFileName.c_str());
   if (music == nullptr) {
-    std::cerr << "Failed to load .mod file: " << modFileName << ", SDL_mixer Error: " << Mix_GetError() << std::endl;
+    std::cerr << "Failed to load music file: " << musicFileName << ", SDL_mixer Error: " << Mix_GetError() << std::endl;
     return 1;
   }
 
@@ -190,7 +193,36 @@ int main(int argc, char* argv[]) {
           case SDLK_ESCAPE:
             running = false;
             break;
-          // Handle other keys here if needed
+          case SDLK_SPACE:
+            if (isPlaying) {
+              Mix_PauseMusic();
+            } else {
+              Mix_ResumeMusic();
+            }
+            isPlaying = !isPlaying;
+            break;
+          case SDLK_LEFT:
+          if (event.key.keysym.mod & KMOD_SHIFT) {
+            if(Mix_GetMusicPosition(music)>0.1){
+              Mix_SetMusicPosition(Mix_GetMusicPosition(music) - 0.1);
+            }else {
+              Mix_SetMusicPosition(0.0);
+            }
+          } else {
+            if(Mix_GetMusicPosition(music)>1.0){
+              Mix_SetMusicPosition(Mix_GetMusicPosition(music) - 1.0);
+            }else{
+              Mix_SetMusicPosition(0.0);
+            }
+          }
+          break;
+        case SDLK_RIGHT:
+          if (event.key.keysym.mod & KMOD_SHIFT) {
+            Mix_SetMusicPosition(Mix_GetMusicPosition(music) + 0.1);
+          } else {
+            Mix_SetMusicPosition(Mix_GetMusicPosition(music) + seekAmount / 1000.0);
+          }
+          break;
           default:
             break;
         }
@@ -200,16 +232,16 @@ int main(int argc, char* argv[]) {
     // Calculate FPS and frame time
     float currentTime = SDL_GetTicks() / 1000.0f;
     float deltaTime = currentTime - lastTime;
-    float introTime = currentTime - startTime;
     lastTime = currentTime;
     int fps = static_cast<int>(1.0f / deltaTime);
     int frameMs = static_cast<int>(deltaTime * 1000);
 
+    // Send timer to the shader
+    float introTime = Mix_GetMusicPosition(music);
+    glUniform1f(timeUniformLocation, introTime);
+
     // Print FPS and frame time to console
     std::cout << "FPS: " << fps << " | " << frameMs << " ms" << " --- INTRO TIME: " << introTime << "s ---" << std::endl;
-
-    // Send timer to the shader
-    glUniform1f(timeUniformLocation, introTime);
 
     render(shaderProgram, VAO);
     SDL_GL_SwapWindow(window);
