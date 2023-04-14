@@ -38,7 +38,8 @@ Those are defaults.
 ## Technical Specification
 
 ### Overview:
-    The Shader Demo Application is a C++ application that utilizes SDL and OpenGL to create a window displaying a fullscreen shader. The application allows users to customize several settings via command-line arguments, such as window resolution, resolution percentage, fullscreen mode, and the shader file to be used.
+
+The Shader Demo Application is a C++ application that utilizes SDL and OpenGL to create a window displaying a fullscreen shader. The application allows users to customize several settings via command-line arguments, such as window resolution, resolution percentage, fullscreen mode, and the shader file to be used.
 
 ### Features:
 
