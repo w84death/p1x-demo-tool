@@ -14,12 +14,14 @@
 #include <GL/glew.h>
 #include <SDL2/SDL_opengl.h>
 
-// Setup (360p and half resolution shader rendering)
-const float windowWidth = 640.0f;
-const float windowHeight = 360.0f;
-const float resolutionPercentage = 0.5f;
+// Default values
+const char* appName = "P1X INTRO TOOL";
+float windowWidth = 640.0f;
+float windowHeight = 360.0f;
+float resolutionPercentage = 0.5f;
+bool fullscreen = false;
 
-// Variables
+// Application variables
 Uint32 frameStart;
 int frameTime;
 
@@ -30,6 +32,21 @@ GLuint createShaderProgram(const std::string& vertexShaderSource, const std::str
 void render(GLuint shaderProgram, GLuint VAO);
 
 int main(int argc, char* argv[]) {
+  // Parse command-line arguments
+  for (int i = 1; i < argc; i++) {
+    std::string arg = argv[i];
+
+    if (arg == "--width" && i + 1 < argc) {
+      windowWidth = std::stof(argv[++i]);
+    } else if (arg == "--height" && i + 1 < argc) {
+      windowHeight = std::stof(argv[++i]);
+    } else if (arg == "--percentage" && i + 1 < argc) {
+      resolutionPercentage = std::stof(argv[++i]);
+    } else if (arg == "--fullscreen") {
+      fullscreen = true;
+    }
+  }
+
   // Initialize SDL
   if (SDL_Init(SDL_INIT_VIDEO) < 0) {
     std::cerr << "Failed to initialize SDL: " << SDL_GetError() << std::endl;
@@ -42,8 +59,14 @@ int main(int argc, char* argv[]) {
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
   SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 
-  // Create window
-  SDL_Window* window = SDL_CreateWindow("P1X INTRO TOOL", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, windowWidth, windowHeight, SDL_WINDOW_OPENGL);  if (!window) {
+  // Create the SDL window with the specified width, height, and fullscreen mode
+  Uint32 windowFlags = SDL_WINDOW_OPENGL;
+  if (fullscreen) {
+    windowFlags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
+  }
+  SDL_Window* window = SDL_CreateWindow(appName, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, windowWidth, windowHeight, windowFlags);
+
+  if (!window) {
     std::cerr << "Failed to create window: " << SDL_GetError() << std::endl;
     SDL_Quit();
     return 1;
@@ -158,7 +181,6 @@ int main(int argc, char* argv[]) {
     render(shaderProgram, VAO);
     SDL_GL_SwapWindow(window);
   }
-
 
   // Cleanup
   glDeleteBuffers(1, &EBO);

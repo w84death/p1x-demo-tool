@@ -2,9 +2,26 @@
 
 C++ tools for creating GLSL intros (demos up to 64KB).
 
-## Features
+## How to use
 
-The engine itself.
+Compile and run:
+```
+./compile
+./intro
+```
+
+Additional parameters:
+```
+./intro \
+  --width 640 \
+  --height 360 \
+  --percentage 0.5 \
+  --fullscreen
+```
+
+Those are default.
+
+## Shader bootstraping app features
 
 ### Done
 - initialize SDL window with one, fullscreen shader
@@ -13,13 +30,14 @@ The engine itself.
 - compiling script
 - running script
 - quits in [ESC]
+- application arguments for changing resolution/screen percentage/fullscreen
 
 ### Planned
 - audio/midi support
 - mouse position support
 - custom uniforms to tweak on runtime
 
-Shader intro.
+## Shader (engine) features
 
 ### Done
 - raymarching
