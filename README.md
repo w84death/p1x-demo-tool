@@ -6,11 +6,22 @@ C++ tools for creating GLSL intros (demos up to 64KB).
 
 ## How to use
 
+On Steam Deck (Arch Linux) I needed to install:
+```
+sudo pacman -S sdl2 glew g++ inotify-tools base-devel glibc linux-api-headers sdl2-dev glu libgl
+```
+
 Compile and run:
 ```
-./compile
+./compile.sh
 ./intro
 ```
+
+Easy development mode:
+```
+./development.sh
+```
+Now you can edit shader.glsl and on each save the script will reload the app.
 
 Additional parameters:
 ```
@@ -24,46 +35,47 @@ Additional parameters:
 
 Those are defaults.
 
-## Requiments
+## Technical Specification
 
-On Steam Deck (Arch Linux) I needed to intall:
-```
-sudo pacman -S sdl2 glew g++ inotify-tools base-devel glibc linux-api-headers sdl2-dev glu libgl
-```
+### Overview:
+    The Shader Demo Application is a C++ application that utilizes SDL and OpenGL to create a window displaying a fullscreen shader. The application allows users to customize several settings via command-line arguments, such as window resolution, resolution percentage, fullscreen mode, and the shader file to be used.
 
-## Shader bootstraping app features
+### Features:
 
-### Done
-- initialize SDL window with one, fullscreen shader
-- sends resolution/percentage to the shader
-- calculates deltaTime (see console output)
-- compiling script
-- running script
-- quits in [ESC]
-- application arguments for changing resolution/screen percentage/fullscreen
+2.1. Window creation and management:
 
-### Planned
-- audio/midi support
-- mouse position support
-- custom uniforms to tweak on runtime
+* The application creates an SDL window with user-defined width and height.
+* Supports optional fullscreen mode.
+* Handles window events, such as window close and the [Esc] keypress, to exit the application.
 
-## Shader (engine) features
+2.2. Command-line arguments:
 
-### Done
-- raymarching
-- primitives SDFs
-- SDFs operators
-- materials
-- camera control
-- time synchronization (via map function)
-- color correction
-- AO
-- soft shadows
+* Allows users to customize the window width and height.
+* Supports setting the resolution percentage to adjust the shader rendering resolution.
+* Enables the application to start in fullscreen mode when the argument is provided.
+* Allows users to specify a custom shader file to be used for rendering.
 
-### Planned
-- fix repetition
-- more usefule SDF ops
-- reflective materials
-- reflections
-- mouse support for camera control
-- support for custom uniforms
+2.3. OpenGL integration:
+
+* Initializes OpenGL context and configures OpenGL settings.
+* Compiles and links vertex and fragment shaders.
+* Sets up vertex buffer objects (VBOs), vertex array objects (VAOs), and element buffer objects (EBOs) for rendering.
+* Renders the shader with user-defined resolution and resolution percentage.
+* Sends texture coordinates and timer values to the shader.
+
+2.4. Shader loading and management:
+
+* Loads the specified shader file (default or user-defined) from the filesystem.
+* Compiles and links the shader at runtime.
+* Handles shader compilation and linking errors.
+
+2.5. Frame time and FPS calculation:
+
+* Calculates frame time and FPS during the render loop.
+* Outputs the FPS and frame time (in milliseconds) to the console.
+
+### Dependencies:
+
+* C++11 or higher.
+* SDL2 library for window management and event handling.
+* OpenGL 3.3 or higher for shader rendering.
