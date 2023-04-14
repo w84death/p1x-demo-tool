@@ -117,17 +117,23 @@ vec2 sdfWorld(in vec3 pos){
 
     if (b_<WORLD_RES) m=MAT_CITY;
 
-    vec3 qlamps = vec3(mod(abs(pos.x),10.0)-2.0,
+    vec3 qlamps = vec3(mod(abs(pos.x),5.0)-2.0,
                    pos.y,
                    mod(abs(pos.z),2.0)-1.0);
 
-    float lampBase = sdBox(qlamps,vec3(0.02,3.0,0.02));
-    float lampLed = sdBox(qlamps-vec3(-0.2,3.0,0.0),vec3(0.3,0.05,0.02));
+    float lampBase = sdBox(qlamps,vec3(0.02,2.0,0.02));
+    float lampLed = sdBox(qlamps-vec3(0.2,2.0,0.0),vec3(0.3,0.05,0.02));
     float lamps_ = opUnion(lampBase,lampLed);
 
-    if (lamps_<WORLD_RES) m=MAT_CONCRETE;
+    float pavementBase = sdBox(qb+vec3(.0,0.15,.0), vec3(8.5,0.1,4.5));
+    float pavementCut = sdBox(qb, vec3(7.5,0.2,3.5));
+    float pavement_ = opSubtraction(pavementCut,pavementBase);
 
-    float city_ = opUnion(b_, lamps_);
+    if (lamps_<WORLD_RES) m=MAT_CONCRETE;
+    if (pavement_<WORLD_RES) m=MAT_CONCRETE;
+
+
+    float city_ = opUnion(opUnion(b_,pavement_), lamps_);
     pos -= vec3(.0,map(u_time,.0,5.0,-2.2,.3),-6.0);
 
     float p1 = sdBox(pos-vec3(-0.7,0.95,.0),vec3(0.05,0.95,0.05));
@@ -262,7 +268,10 @@ vec3 getColor(vec3 pos, vec3 nor,vec3 rd, float material_id){
     vec3 mate = vec3(0.2);
 
     // environment: sun, shadows, fake bounce light
-    vec3 sun_pos = normalize(vec3(-6.0,map(u_time,T_SUNRISE*.25,T_SUNRISE,-3.0,3.0),3.0));
+    vec3 sun_pos = normalize(vec3(
+        map(u_time,T_SUNRISE*.25,T_SUNRISE,-6.0,1.0),
+        map(u_time,T_SUNRISE*.25,T_SUNRISE,-3.0,3.0),
+        3.0));
     float sun_shadow = castSoftShadow(pos+nor*0.001, sun_pos);
     float ao = getAO(pos,nor);
 
@@ -289,10 +298,45 @@ vec3 getColor(vec3 pos, vec3 nor,vec3 rd, float material_id){
 vec3 render(in vec2 p){
 
     // ray origin aka camera
-    vec3 ro = vec3(.0,.5,1.5-u_time);
+    vec3 ro = vec3(
+        .0,
+        map(u_time,0.0,T_SUNRISE*2.5,0.1,3.0),
+        1.5-u_time);
 
     // target aka look at
-    vec3 ta = vec3(.0,.5,.0-u_time);
+    vec3 ta = vec3(
+        .0,
+        map(u_time,0.0,T_SUNRISE*2.5,0.5,2.0),
+        .0-u_time);
+
+    if (u_time>T_SUNRISE*2.5){
+        ta.x = map(
+            u_time,
+            T_SUNRISE*2.5,
+            T_SUNRISE*4.0,
+            .0,
+            sin((u_time-(T_SUNRISE*4.0))*.4));
+        ta.y += map(
+            u_time,
+            T_SUNRISE*2.5,
+            T_SUNRISE*4.0,
+            .0,
+            7.0+cos((u_time-(T_SUNRISE*4.0))*.5)*7.0);
+        ro.y += map(
+            u_time,
+            T_SUNRISE*2.5,
+            T_SUNRISE*4.0,
+            .0,
+            8.0+cos((u_time-(T_SUNRISE*4.0))*.5)*8.0);
+        ro.z -= map(
+            u_time,
+            T_SUNRISE*2.5,
+            T_SUNRISE*8.0,
+            .0,
+            u_time*5.0);
+        ta.z = ro.z-1.5;
+    }
+
 
 
     vec3 ww = normalize (ta-ro);
