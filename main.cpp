@@ -13,6 +13,7 @@
 #include <SDL2/SDL.h>
 #include <GL/glew.h>
 #include <SDL2/SDL_opengl.h>
+#include <SDL2/SDL_mixer.h>
 
 // Default values
 const char* appName = "P1X INTRO TOOL";
@@ -94,6 +95,20 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
+  // Initialize SDL_mixer
+  if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) < 0) {
+    std::cerr << "SDL_mixer could not initialize! SDL_mixer Error: " << Mix_GetError() << std::endl;
+    return 1;
+  }
+
+  // Load .mod file
+  std::string modFileName = "music.mod";
+  Mix_Music* music = Mix_LoadMUS(modFileName.c_str());
+  if (music == nullptr) {
+    std::cerr << "Failed to load .mod file: " << modFileName << ", SDL_mixer Error: " << Mix_GetError() << std::endl;
+    return 1;
+  }
+
   //  Vertex Shader
   std::stringstream vertexShaderSourceStream;
   vertexShaderSourceStream << R"glsl(
@@ -162,6 +177,9 @@ int main(int argc, char* argv[]) {
   bool running = true;
   SDL_Event event;
 
+  // Play MIDI file (loop indefinitely)
+  Mix_PlayMusic(music, -1);
+
   while (running) {
     frameStart = SDL_GetTicks();
     while (SDL_PollEvent(&event)) {
@@ -198,15 +216,15 @@ int main(int argc, char* argv[]) {
   }
 
   // Cleanup
+  Mix_FreeMusic(music);
+  Mix_CloseAudio();
   glDeleteBuffers(1, &EBO);
   glDeleteBuffers(1, &VBO);
   glDeleteVertexArrays(1, &VAO);
   glDeleteProgram(shaderProgram);
-
   SDL_GL_DeleteContext(context);
   SDL_DestroyWindow(window);
   SDL_Quit();
-
   return 0;
 }
 

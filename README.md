@@ -8,7 +8,7 @@ C++ tools for creating GLSL intros (demos up to 64KB).
 
 On Steam Deck (Arch Linux) I needed to install:
 ```
-sudo pacman -S sdl2 glew g++ inotify-tools base-devel glibc linux-api-headers sdl2-dev glu libgl
+sudo pacman -S sdl2 glew g++ inotify-tools base-devel glibc linux-api-headers sdl2-dev glu libgl sdl2_mixer upx
 ```
 
 Compile and run:
