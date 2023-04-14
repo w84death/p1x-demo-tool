@@ -183,6 +183,7 @@ int main(int argc, char* argv[]) {
 
   while (running) {
     frameStart = SDL_GetTicks();
+    float demoTime = Mix_GetMusicPosition(music);
     while (SDL_PollEvent(&event)) {
       if (event.type == SDL_QUIT) {
         running = false;
@@ -201,14 +202,14 @@ int main(int argc, char* argv[]) {
             break;
           case SDLK_LEFT:
           if (event.key.keysym.mod & KMOD_SHIFT) {
-            if(Mix_GetMusicPosition(music)>0.1){
-              Mix_SetMusicPosition(Mix_GetMusicPosition(music) - 0.1);
+            if(demoTime>0.1){
+              Mix_SetMusicPosition(demoTime - 0.1);
             }else {
               Mix_SetMusicPosition(0.0);
             }
           } else {
-            if(Mix_GetMusicPosition(music)>1.0){
-              Mix_SetMusicPosition(Mix_GetMusicPosition(music) - 1.0);
+            if(demoTime>1.0){
+              Mix_SetMusicPosition(demoTime - 1.0);
             }else{
               Mix_SetMusicPosition(0.0);
             }
@@ -216,9 +217,9 @@ int main(int argc, char* argv[]) {
           break;
         case SDLK_RIGHT:
           if (event.key.keysym.mod & KMOD_SHIFT) {
-            Mix_SetMusicPosition(Mix_GetMusicPosition(music) + 0.1);
+            Mix_SetMusicPosition(demoTime + 0.1);
           } else {
-            Mix_SetMusicPosition(Mix_GetMusicPosition(music) + 1.0);
+            Mix_SetMusicPosition(demoTime + 1.0);
           }
           break;
           default:
@@ -235,11 +236,11 @@ int main(int argc, char* argv[]) {
     int frameMs = static_cast<int>(deltaTime * 1000);
 
     // Send timer to the shader
-    float introTime = Mix_GetMusicPosition(music);
-    glUniform1f(timeUniformLocation, introTime);
+    demoTime = Mix_GetMusicPosition(music);
+    glUniform1f(timeUniformLocation, demoTime);
 
     // Print FPS and frame time to console
-    std::cout << "FPS: " << fps << " | " << frameMs << " ms" << " --- INTRO TIME: " << introTime << "s ---" << std::endl;
+    std::cout << "FPS: " << fps << " | " << frameMs << " ms" << " --- DEMO TIME: " << demoTime << "s ---" << std::endl;
 
     render(shaderProgram, VAO);
     SDL_GL_SwapWindow(window);
