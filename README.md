@@ -16,10 +16,18 @@ Additional parameters:
   --width 640 \
   --height 360 \
   --percentage 0.5 \
-  --fullscreen
+  --fullscreen \
+  --shader shader.glsl
 ```
 
-Those are default.
+Those are defaults.
+
+## Requiments
+
+On Steam Deck (Arch Linux) I needed to intall:
+```
+sudo pacman -S sdl2 glew g++ inotify-tools base-devel glibc linux-api-headers sdl2-dev glu libgl
+```
 
 ## Shader bootstraping app features
 

@@ -20,6 +20,7 @@ float windowWidth = 640.0f;
 float windowHeight = 360.0f;
 float resolutionPercentage = 0.5f;
 bool fullscreen = false;
+std::string shaderFileName = "shader.glsl";
 
 // Application variables
 Uint32 frameStart;
@@ -44,6 +45,8 @@ int main(int argc, char* argv[]) {
       resolutionPercentage = std::stof(argv[++i]);
     } else if (arg == "--fullscreen") {
       fullscreen = true;
+    } else if (arg == "--shader" && i + 1 < argc) {
+      shaderFileName = argv[++i];
     }
   }
 
@@ -91,7 +94,7 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
-  // Compile shaders and create shader program
+  //  Vertex Shader
   std::stringstream vertexShaderSourceStream;
   vertexShaderSourceStream << R"glsl(
     #version 330 core
@@ -105,7 +108,19 @@ int main(int argc, char* argv[]) {
     }
   )glsl";
   std::string vertexShaderSource = vertexShaderSourceStream.str();
-  std::string fragmentShaderSource = readFile("shader.glsl");
+
+  //  Fragment Shader (default or from arguments)
+  std::ifstream shaderFile(shaderFileName);
+  if (!shaderFile.is_open()) {
+    std::cerr << "Failed to open shader file: " << shaderFileName << std::endl;
+    return 1;
+  }
+  std::stringstream shaderStream;
+  shaderStream << shaderFile.rdbuf();
+  shaderFile.close();
+  std::string fragmentShaderSource = shaderStream.str();
+
+  // Compile shaders and create shader program
   GLuint shaderProgram = createShaderProgram(vertexShaderSource, fragmentShaderSource);
 
   // Create a VAO, VBO, and EBO for rendering a fullscreen quad
@@ -193,14 +208,6 @@ int main(int argc, char* argv[]) {
   SDL_Quit();
 
   return 0;
-}
-
-// Reading file
-std::string readFile(const std::string& filePath) {
-  std::ifstream file(filePath);
-  std::stringstream buffer;
-  buffer << file.rdbuf();
-  return buffer.str();
 }
 
 // Compiling Shader
