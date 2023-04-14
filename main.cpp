@@ -1,9 +1,9 @@
 /*
- * P1X 1ntro Tool
+ * -=[ P1X DEMO TOOL ]=-
  * by Krzysztof Krystian Jankowski
  *
  * (c) 2023.04
- * https://github.com/w84death/p1x-intro-tool
+ * https://github.com/w84death/p1x-demo-tool
  * */
 
 #include <iostream>
@@ -16,7 +16,7 @@
 #include <SDL2/SDL_mixer.h>
 
 // Default values
-const char* appName = "P1X INTRO TOOL";
+const char* appName = "-=[ P1X DEMO TOOL ]=-";
 float windowWidth = 640.0f;
 float windowHeight = 360.0f;
 float resolutionPercentage = 0.5f;

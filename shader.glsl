@@ -1,11 +1,11 @@
 #version 330 core
 
 /*
- * P1X INTRO TOOL
+ * -=[ P1X DEMO TOOL ]=-
  * by Krzysztof Krystian Jankowski
  *
  * (c) 2023.04
- * https://github.com/w84death/p1x-intro-tool
+ * https://github.com/w84death/p1x-demo-tool
  * */
 
 in vec2 TexCoord;
