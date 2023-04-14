@@ -2,7 +2,7 @@
 
 C++ tools for creating GLSL intros (demos up to 64KB).
 
-!(screen-dev.png)[Development Screenshot]
+![Development Screenshot](screen-dev.png)
 
 ## How to use
 
