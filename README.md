@@ -1,6 +1,6 @@
 # P1T - P1X 1ntro Tool
 
-C++ tools for creating GLSL intros (demos up to 64KB).
+C++ tools for creating GLSL demos (targetting 64K).
 
 ![Development Screenshot](screen-dev.png)
 

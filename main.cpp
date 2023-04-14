@@ -25,9 +25,7 @@ std::string shaderFileName = "shader.glsl";
 
 // Application variables
 Uint32 frameStart;
-int frameTime;
 bool isPlaying = true;
-int seekAmount = 1000;
 
 
 // Function prototypes
@@ -220,7 +218,7 @@ int main(int argc, char* argv[]) {
           if (event.key.keysym.mod & KMOD_SHIFT) {
             Mix_SetMusicPosition(Mix_GetMusicPosition(music) + 0.1);
           } else {
-            Mix_SetMusicPosition(Mix_GetMusicPosition(music) + seekAmount / 1000.0);
+            Mix_SetMusicPosition(Mix_GetMusicPosition(music) + 1.0);
           }
           break;
           default:

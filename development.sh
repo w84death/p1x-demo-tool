@@ -1,6 +1,6 @@
 #!/bin/bash
 
-shader_demo_executable="./intro"
+shader_demo_executable="./demo"
 shader_file="shader.glsl"
 
 kill_intro() {
@@ -22,7 +22,7 @@ if ! command -v inotifywait >/dev/null 2>&1; then
   exit 1
 fi
 
-# Start the initial instance of shader_demo
+# Start the initial instance of demo
 kill_intro
 $intro_executable & disown
 
