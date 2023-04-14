@@ -103,7 +103,7 @@ int main(int argc, char* argv[]) {
   }
 
   // Load music file
-  std::string musicFileName = "music.mp3";
+  std::string musicFileName = "music.ogg";
   Mix_Music* music = Mix_LoadMUS(musicFileName.c_str());
   if (music == nullptr) {
     std::cerr << "Failed to load music file: " << musicFileName << ", SDL_mixer Error: " << Mix_GetError() << std::endl;
