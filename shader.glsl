@@ -109,15 +109,20 @@ vec2 sdfWorld(in vec3 pos){
                    pos.y,
                    mod(abs(pos.z),10.0)-5.0);
 
-    vec2 bid = vec2(floor(abs(pos.x)/20.0)-10.0,
-                   floor(abs(pos.z)/10.0)-5.0);
+    vec2 bid = vec2(floor(abs(pos.x)/10.0)-5.0,
+                   floor(abs(pos.z)/5.0)-2.5);
 
-    float bheight = 2.0+10.0*abs(sin(u_time+rnd(bid)));
-    float b_ = sdRoundBox(qb,vec3(6.0,bheight,3.0),0.4);
+    float bheight = 2.0+10.0*abs(sin(u_time+rnd(bid)*.25));
+    float b1=sdRoundBox(qb-vec3(3.1,0.,1.6),vec3(2.0,bheight,1.),0.4);
+    float b2=sdRoundBox(qb-vec3(-3.1,0.,1.6),vec3(2.0,bheight,1.),0.4);
+    float b3=sdRoundBox(qb-vec3(3.1,0.,-1.6),vec3(2.0,bheight,1.),0.4);
+    float b4=sdRoundBox(qb-vec3(-3.1,0.,-1.6),vec3(2.0,bheight,1.),0.4);
+
+    float b_ = opUnion(b1,opUnion(b2,opUnion(b3,b4)));
 
     if (b_<WORLD_RES) m=MAT_CITY;
 
-    vec3 qlamps = vec3(mod(abs(pos.x),5.0)-2.0,
+    vec3 qlamps = vec3(mod(abs(pos.x),5.0)-1.6,
                    pos.y,
                    mod(abs(pos.z),2.0)-1.0);
 
@@ -229,7 +234,7 @@ float castSoftShadow(in vec3 ro, vec3 rd){
  * */
 float getAO(in vec3 ro, vec3 normal){
     float occ=0.0;
-    float weight=1.2;
+    float weight=1.1;
     for (int i=0; i<8; i++){
         float len = 0.01+0.02*float(i*i);
         float dist = sdfWorld(ro+normal*len).x;
@@ -255,8 +260,8 @@ vec3 getMaterial(vec3 p, vec3 nor, float id){
         m=vec3(0.1,.2,5.0);
     }else
     if(id==MAT_CITY){
-        float crnd = rnd(vec2(floor(abs(p.x)/20.0),
-                floor(abs(p.z)/30.0)))*2.0;
+        float crnd = rnd(vec2(floor(abs(p.x)/10.0),
+                floor(abs(p.z)/15.0)));
         float win=
         mod(floor(p.x*4.0)*floor(p.y*4.0),2.0)*nor.z+
         0.1*nor.y+
