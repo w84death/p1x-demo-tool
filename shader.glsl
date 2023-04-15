@@ -27,6 +27,7 @@ const float MAT_CONCRETE = 5.0;
 const float MAT_CHESS = 6.0;
 const float MAT_METAL = 7.0;
 const float MAT_CARS = 8.0;
+const float MAT_CITY2 = 9.0;
 
 const float T_SUNRISE=6.0;
 
@@ -121,29 +122,30 @@ vec2 sdfWorld(in vec3 pos){
     vec3 qb3 = qb-vec3(3.1,0.,-1.6);
     vec3 qb4 = qb-vec3(-3.1,0.,-1.6);
 
-    float b1=sdRoundBox(qb1,vec3(2.0,bheight,1.),0.4);
-    float b2=sdRoundBox(qb2,vec3(2.0,bheight,1.),0.4);
-    float b3=sdRoundBox(qb3,vec3(2.0,bheight,1.),0.4);
-    float b4=sdRoundBox(qb4,vec3(2.0,bheight,1.),0.4);
+    float b1=sdRoundBox(qb1,vec3(2.0,bheight,1.),0.2);
+    float b2=sdRoundBox(qb2,vec3(2.0,bheight,1.),0.2);
+    float b3=sdRoundBox(qb3,vec3(2.0,bheight,1.),0.2);
+    float b4=sdRoundBox(qb4,vec3(2.0,bheight,1.),0.2);
 
     float roofrnd = .1+rnd(bid)*.8;
 
-    float r1 = sdRoundBox(qb1-vec3(-0.5+rnd(bid+vec2(.1)),bheight,-0.5+roofrnd),vec3(roofrnd,roofrnd*3.0,roofrnd),0.2);
+    float r1 = sdRoundBox(qb1-vec3(-0.5+rnd(bid+vec2(.1)),bheight,-0.5+roofrnd),vec3(roofrnd,roofrnd*1.5,roofrnd),0.1);
     roofrnd = .1+rnd(bid+vec2(1.))*.8;
-    float r2 = sdRoundBox(qb2-vec3(-0.5+rnd(bid+vec2(.1)),bheight,-0.5+roofrnd),vec3(roofrnd,roofrnd*3.0,roofrnd),0.2);
+    float r2 = sdRoundBox(qb2-vec3(-0.5+rnd(bid+vec2(.1)),bheight,-0.5+roofrnd),vec3(roofrnd,roofrnd*1.5,roofrnd),0.1);
     roofrnd = .1+rnd(bid+vec2(2.))*.8;
-    float r3 = sdRoundBox(qb3-vec3(-0.5+rnd(bid+vec2(.1)),bheight,-0.5+roofrnd),vec3(roofrnd,roofrnd*3.0,roofrnd),0.2);
+    float r3 = sdRoundBox(qb3-vec3(-0.5+rnd(bid+vec2(.1)),bheight,-0.5+roofrnd),vec3(roofrnd,roofrnd*1.5,roofrnd),0.1);
     roofrnd = .1+rnd(bid+vec2(3.))*.8;
-    float r4 = sdRoundBox(qb4-vec3(-0.5+rnd(bid+vec2(.1)),bheight,-0.5+roofrnd),vec3(roofrnd,roofrnd*3.0,roofrnd),0.2);
+    float r4 = sdRoundBox(qb4-vec3(-0.5+rnd(bid+vec2(.1)),bheight,-0.5+roofrnd),vec3(roofrnd,roofrnd*1.5,roofrnd),0.1);
 
     float roofs_ = opUnion(r1,opUnion(r2,opUnion(r3,r4)));
     float block_ = opUnion(b1,opUnion(b2,opUnion(b3,b4)));
 
-    float base = sdRoundBox(qb,vec3(5.5,1.0,3.),0.2);
-    block_ = opUnion(block_, base);
-    block_ = opUnion(block_,roofs_);
+    float base = sdRoundBox(qb+vec3(.0,.5,.0),vec3(5.5,1.0,3.),0.1);
+    block_ = opUnion(block_,base);
+    block_ = opSmoothUnion(block_,roofs_,.25);
 
     if (block_<WORLD_RES) m=MAT_CITY;
+    if (base<WORLD_RES) m=MAT_CITY2;
     if (roofs_<WORLD_RES) m=MAT_CONCRETE;
 
     vec3 qlamps = vec3(mod(abs(pos.x),5.0)-1.6,
@@ -304,6 +306,11 @@ vec3 getMaterial(vec3 p, vec3 nor, float id){
         0.1*nor.y+
         mod(floor(p.y*4.0)*floor(p.z*4.0),2.0)*nor.x;
         m=vec3(map(u_fft,0.65,1.0,0.0,4.0)*win,win+crnd,win+crnd);
+    }else
+    if(id==MAT_CITY2){
+        float crnd = rnd(vec2(floor(abs(p.x)/10.0),
+                floor(abs(p.z)/15.0)));
+        m=vec3(crnd*3.);
     }else
     if(id==MAT_METAL){
         m=vec3(1.,1.,1.)*nor*.2;
