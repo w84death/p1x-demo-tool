@@ -25,6 +25,8 @@ const float MAT_CITY = 3.0;
 const float MAT_ASPHALT = 4.0;
 const float MAT_CONCRETE = 5.0;
 const float MAT_CHESS = 6.0;
+const float MAT_METAL = 7.0;
+const float MAT_CARS = 8.0;
 
 const float T_SUNRISE=6.0;
 
@@ -113,7 +115,12 @@ vec2 sdfWorld(in vec3 pos){
                    floor(abs(pos.z)/5.0)-2.5);
 
     float bheight = 2.0+10.0*abs(sin(u_time+rnd(bid)*.25));
+    float roofrnd = .1+rnd(bid)*.8;
+    float roofs = sdRoundBox(qb-vec3(3.1+roofrnd,bheight,1.6),vec3(roofrnd,roofrnd*2.0,roofrnd),0.2);
+
+
     float b1=sdRoundBox(qb-vec3(3.1,0.,1.6),vec3(2.0,bheight,1.),0.4);
+    b1 = min(b1,roofs);
     float b2=sdRoundBox(qb-vec3(-3.1,0.,1.6),vec3(2.0,bheight,1.),0.4);
     float b3=sdRoundBox(qb-vec3(3.1,0.,-1.6),vec3(2.0,bheight,1.),0.4);
     float b4=sdRoundBox(qb-vec3(-3.1,0.,-1.6),vec3(2.0,bheight,1.),0.4);
@@ -121,6 +128,7 @@ vec2 sdfWorld(in vec3 pos){
     float b_ = opUnion(b1,opUnion(b2,opUnion(b3,b4)));
 
     if (b_<WORLD_RES) m=MAT_CITY;
+    if (roofs<WORLD_RES) m=MAT_CONCRETE;
 
     vec3 qlamps = vec3(mod(abs(pos.x),5.0)-1.6,
                    pos.y,
@@ -143,10 +151,17 @@ vec2 sdfWorld(in vec3 pos){
     vec3 qcarsR = vec3(mod(pos.x,20.0)-0.8,
                    pos.y,
                    mod(abs(pos.z-u_time*5.0),2.0)-1.);
+    vec2 carLid = vec2(floor(abs(pos.x)/20.0)-0.8,
+                   floor(abs(pos.z+u_time*5.0)/2.0)-1.);
+    vec2 carRid = vec2(floor(abs(pos.x)/20.0)-0.8,
+                   floor(abs(pos.z-u_time*5.0)/2.0)-1.);
 
-    float carsL = sdRoundBox(qcarsL, vec3(.12,.12,.3),0.3);
-    float carsR = sdRoundBox(qcarsR, vec3(.12,.12,.3),0.3);
+    float carsL = sdRoundBox(qcarsL, vec3(.12,.1+rnd(carLid),.3+rnd(carLid)*.1),0.3);
+    float carsR = sdRoundBox(qcarsR, vec3(.12,.1+rnd(carRid),.3+rnd(carRid)*.1),0.3);
+
     float cars_ = opUnion(carsL,carsR);
+
+    if(cars_<WORLD_RES) m=MAT_CARS;
 
     float city_ = opUnion(opUnion(opUnion(b_,pavement_), lamps_),cars_);
     pos -= vec3(.0,map(u_time,.0,5.0,-2.2,.3),-6.0);
@@ -215,17 +230,19 @@ vec2 castRay(in vec3 ro, vec3 rd){
  * SHOFT SHADOW
  *
  * */
-float castSoftShadow(in vec3 ro, vec3 rd){
-    float res=1.0;
-    float dist=0.01;
-    float size=0.03;
-    for (int i=0; i<2600; i++){
-        float hit = sdfWorld(ro+rd*dist).x;
-        res = min(res,hit/(dist*size));
-        dist+=hit;
-        if(hit<WORLD_RES || hit>WORLD_MAX) break;
+float getSoftShadow( in vec3 ro, in vec3 rd, float w)
+{
+    float res = 1.0;
+    float t = 0.01;
+    for( int i=0; i<256 && t<WORLD_MAX; i++ )
+    {
+        float h = sdfWorld(ro + t*rd).x;
+        res = min( res, h/(w*t) );
+        t += clamp(h, 0.005, 0.50);
+        if( res<-1.0 || t>WORLD_MAX ) break;
     }
-    return clamp(res,0.0,1.0);
+    res = max(res,-1.0);
+    return 0.25*(1.0+res)*(1.0+res)*(2.0-res);
 }
 
 /*
@@ -234,7 +251,7 @@ float castSoftShadow(in vec3 ro, vec3 rd){
  * */
 float getAO(in vec3 ro, vec3 normal){
     float occ=0.0;
-    float weight=1.1;
+    float weight=1.0;
     for (int i=0; i<8; i++){
         float len = 0.01+0.02*float(i*i);
         float dist = sdfWorld(ro+normal*len).x;
@@ -252,8 +269,8 @@ vec3 getMaterial(vec3 p, vec3 nor, float id){
     vec3 m=vec3(.0,.0,.0);
 
     if(id==MAT_GROUND){
-        m=vec3(.0,1.0,.0);
-        m*=vec3(mod(floor(.5+p.x*.25)*floor(.5+p.z*.5),5.0));
+        m=vec3(-2.,-2.,-1.5);
+        m+=vec3(.0,1.,.0)*vec3(mod(floor(.5+p.x*.25)*floor(.5+p.z*.5),5.0));
 
     }else
     if(id==MAT_DARKBLUE){
@@ -268,15 +285,17 @@ vec3 getMaterial(vec3 p, vec3 nor, float id){
         mod(floor(p.y*4.0)*floor(p.z*4.0),2.0)*nor.x;
         m=vec3(map(u_fft,0.65,1.0,0.0,4.0)*win,win+crnd,win+crnd);
     }else
-    if(id==MAT_CHESS){
-    vec3(mod(floor(p.x*8.0)+floor(p.z*8.0),2.0));
+    if(id==MAT_METAL){
+        m=vec3(1.,1.,1.)*nor*.2;
     }else
     if(id==MAT_ASPHALT){
         m=vec3(.01,.01,.02);
+    }else
+    if(id==MAT_CARS){
+        m=vec3(-1.,-1.,1.)+nor*.1;
     }
     return m;
 }
-
 
 vec3 getColor(vec3 pos, vec3 nor,vec3 rd, float material_id){
     // colors reducer for better color correction
@@ -287,7 +306,7 @@ vec3 getColor(vec3 pos, vec3 nor,vec3 rd, float material_id){
         map(u_time,T_SUNRISE*.25,T_SUNRISE,-6.0,1.0),
         map(u_time,T_SUNRISE*.25,T_SUNRISE,-3.0,3.0),
         3.0));
-    float sun_shadow = castSoftShadow(pos+nor*0.001, sun_pos);
+    float sun_shadow = getSoftShadow(pos+nor*0.001, sun_pos,.1);
     float ao = getAO(pos,nor);
 
     float sun_dif = clamp(dot(nor,sun_pos),0.0,1.0);
@@ -296,13 +315,13 @@ vec3 getColor(vec3 pos, vec3 nor,vec3 rd, float material_id){
 
     float sunrise = map(u_time,T_SUNRISE*.25,T_SUNRISE,.01,1.0);
 
+
     vec3 col = mate*getMaterial(pos,nor,material_id);
     col *= ao;
     col += mate*vec3(5.0,3.0,2.0)*sun_dif*sun_shadow;
     col += mate*vec3(0.5,0.8,0.9)*sky_dif;
     col *= ao;
     col *= sunrise;
-
     return col;
 }
 
@@ -410,6 +429,8 @@ void main() {
     vec3 col = render(TexCoord);
 
     // color/exposure correction
+    col.gr *=  0.8;
+
     col = pow (col, vec3(0.4545));
     FragColor = vec4(col, 1.0);
 }
