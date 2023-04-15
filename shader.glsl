@@ -115,28 +115,45 @@ vec2 sdfWorld(in vec3 pos){
                    floor(abs(pos.z)/5.0)-2.5);
 
     float bheight = 2.0+10.0*abs(sin(u_time+rnd(bid)*.25));
+
+    vec3 qb1 = qb-vec3(3.1,0.,1.6);
+    vec3 qb2 = qb-vec3(-3.1,0.,1.6);
+    vec3 qb3 = qb-vec3(3.1,0.,-1.6);
+    vec3 qb4 = qb-vec3(-3.1,0.,-1.6);
+
+    float b1=sdRoundBox(qb1,vec3(2.0,bheight,1.),0.4);
+    float b2=sdRoundBox(qb2,vec3(2.0,bheight,1.),0.4);
+    float b3=sdRoundBox(qb3,vec3(2.0,bheight,1.),0.4);
+    float b4=sdRoundBox(qb4,vec3(2.0,bheight,1.),0.4);
+
     float roofrnd = .1+rnd(bid)*.8;
-    float roofs = sdRoundBox(qb-vec3(3.1+roofrnd,bheight,1.6),vec3(roofrnd,roofrnd*2.0,roofrnd),0.2);
 
+    float r1 = sdRoundBox(qb1-vec3(-0.5+rnd(bid+vec2(.1)),bheight,-0.5+roofrnd),vec3(roofrnd,roofrnd*3.0,roofrnd),0.2);
+    roofrnd = .1+rnd(bid+vec2(1.))*.8;
+    float r2 = sdRoundBox(qb2-vec3(-0.5+rnd(bid+vec2(.1)),bheight,-0.5+roofrnd),vec3(roofrnd,roofrnd*3.0,roofrnd),0.2);
+    roofrnd = .1+rnd(bid+vec2(2.))*.8;
+    float r3 = sdRoundBox(qb3-vec3(-0.5+rnd(bid+vec2(.1)),bheight,-0.5+roofrnd),vec3(roofrnd,roofrnd*3.0,roofrnd),0.2);
+    roofrnd = .1+rnd(bid+vec2(3.))*.8;
+    float r4 = sdRoundBox(qb4-vec3(-0.5+rnd(bid+vec2(.1)),bheight,-0.5+roofrnd),vec3(roofrnd,roofrnd*3.0,roofrnd),0.2);
 
-    float b1=sdRoundBox(qb-vec3(3.1,0.,1.6),vec3(2.0,bheight,1.),0.4);
-    b1 = min(b1,roofs);
-    float b2=sdRoundBox(qb-vec3(-3.1,0.,1.6),vec3(2.0,bheight,1.),0.4);
-    float b3=sdRoundBox(qb-vec3(3.1,0.,-1.6),vec3(2.0,bheight,1.),0.4);
-    float b4=sdRoundBox(qb-vec3(-3.1,0.,-1.6),vec3(2.0,bheight,1.),0.4);
+    float roofs_ = opUnion(r1,opUnion(r2,opUnion(r3,r4)));
+    float block_ = opUnion(b1,opUnion(b2,opUnion(b3,b4)));
 
-    float b_ = opUnion(b1,opUnion(b2,opUnion(b3,b4)));
+    float base = sdRoundBox(qb,vec3(5.5,1.0,3.),0.2);
+    block_ = opUnion(block_, base);
+    block_ = opUnion(block_,roofs_);
 
-    if (b_<WORLD_RES) m=MAT_CITY;
-    if (roofs<WORLD_RES) m=MAT_CONCRETE;
+    if (block_<WORLD_RES) m=MAT_CITY;
+    if (roofs_<WORLD_RES) m=MAT_CONCRETE;
 
     vec3 qlamps = vec3(mod(abs(pos.x),5.0)-1.6,
                    pos.y,
                    mod(abs(pos.z),2.0)-1.0);
 
-    float lampBase = sdBox(qlamps,vec3(0.02,2.0,0.02));
-    float lampLed = sdBox(qlamps-vec3(0.2,2.0,0.0),vec3(0.3,0.05,0.02));
-    float lamps_ = opUnion(lampBase,lampLed);
+    float lampBase = sdBox(qlamps,vec3(0.05,.1,0.05));
+    float lampLeg = sdRoundBox(qlamps,vec3(0.01,2.0,0.01),0.04);
+    float lampLed = sdRoundBox(qlamps-vec3(0.2,2.0,0.0),vec3(0.3,0.05,0.02),0.04);
+    float lamps_ = opSmoothUnion(opSmoothUnion(lampBase,lampLeg,0.1),lampLed,0.04);
 
     float pavementBase = sdBox(qb+vec3(.0,0.15,.0), vec3(8.5,0.1,4.5));
     float pavementCut = sdBox(qb, vec3(7.5,0.2,3.5));
@@ -163,7 +180,10 @@ vec2 sdfWorld(in vec3 pos){
 
     if(cars_<WORLD_RES) m=MAT_CARS;
 
-    float city_ = opUnion(opUnion(opUnion(b_,pavement_), lamps_),cars_);
+    // floating cars + wiadukt
+
+
+    float city_ = opUnion(opUnion(opUnion(block_,pavement_), lamps_),cars_);
     pos -= vec3(.0,map(u_time,.0,5.0,-2.2,.3),-6.0);
 
     float p1 = sdBox(pos-vec3(-0.7,0.95,.0),vec3(0.05,0.95,0.05));
@@ -394,6 +414,10 @@ vec3 render(in vec2 p){
         vec3 pos = ro+rd*ray_hit;
         vec3 nor = calcNormal(pos);
         col = getColor(pos,nor,rd,material_id);
+        float fogDist = 0.0333;
+        float fogAmount = 1.0 - exp( -ray_hit*fogDist );
+        vec3  fogColor  = vec3(0.6,.7,.8)* map(u_time,T_SUNRISE*.25,T_SUNRISE,.01,1.0);
+        col = mix( col, fogColor, fogAmount );
 
     }
     return col;
