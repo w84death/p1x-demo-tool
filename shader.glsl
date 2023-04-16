@@ -16,7 +16,7 @@ out vec4 FragColor;
 
 const float u_fft=1.0;
 
-const float WORLD_MAX = 256.0;
+const float WORLD_MAX = 128.0;
 const float WORLD_RES = 0.001;
 
 const float MAT_GROUND = 1.0;
@@ -30,7 +30,21 @@ const float MAT_CARS = 8.0;
 const float MAT_CITY2 = 9.0;
 
 const float T_SUNRISE=6.0;
+const float T_INTRO=8.0;
+const float T_STOP1=16.0;
+const float T_STOP2=32.0;
+const float T_END=50.0;
 
+int SCENE = 0;
+const int SCENE_INTRO = 1;
+const int SCENE_HELI = 2;
+const int SCENE_STREETLOOK = 3;
+const int SCENE_END = 4;
+
+const float CAM_LENS_24mm = 2.0;
+const float CAM_LENS_35mm = 3.0;
+const float CAM_LENS_50mm = 4.0;
+const float CAM_LENS_80mm = 6.0;
 
 /*
  * SDF BRUSHES
@@ -352,60 +366,72 @@ vec3 getColor(vec3 pos, vec3 nor,vec3 rd, float material_id){
     return col;
 }
 
+
+
 /*
  * THE RENDERER
  *
  * */
 vec3 render(in vec2 p){
 
-    // ray origin aka camera
-    vec3 ro = vec3(
-        .0,
-        map(u_time,0.0,T_SUNRISE*2.5,0.1,3.0),
-        1.5-u_time);
+    // DIRECTOR OF PHOTOGRAPHY
+    float cam_fov = 4.;
+    float cam_z = -u_time;
+    float cam_x = 0.0;
+    float cam_y = 0.5;
+    float aim_x = cam_x;
+    float aim_y = cam_y;
+    float aim_z = -1.0;
 
-    // target aka look at
-    vec3 ta = vec3(
-        .0,
-        map(u_time,0.0,T_SUNRISE*2.5,0.5,2.0),
-        .0-u_time);
-
-    if (u_time>T_SUNRISE*2.5){
-        ta.x = map(
-            u_time,
-            T_SUNRISE*2.5,
-            T_SUNRISE*4.0,
-            .0,
-            sin((u_time-(T_SUNRISE*4.0))*.4));
-        ta.y += map(
-            u_time,
-            T_SUNRISE*2.5,
-            T_SUNRISE*4.0,
-            .0,
-            7.0+cos((u_time-(T_SUNRISE*4.0))*.5)*7.0);
-        ro.y += map(
-            u_time,
-            T_SUNRISE*2.5,
-            T_SUNRISE*4.0,
-            .0,
-            8.0+cos((u_time-(T_SUNRISE*4.0))*.5)*8.0);
-        ro.z -= map(
-            u_time,
-            T_SUNRISE*2.5,
-            T_SUNRISE*8.0,
-            .0,
-            u_time*5.0);
-        ta.z = ro.z-1.5;
+    if(u_time<T_INTRO){
+        SCENE=SCENE_INTRO;
+    }else
+    if(u_time<T_STOP1){
+        SCENE=SCENE_STREETLOOK;
+    }else
+    if(u_time<T_STOP2){
+        SCENE=SCENE_HELI;
+    }else
+    if(u_time<T_END){
+        SCENE=SCENE_END;
+    }else{
+        SCENE=SCENE_INTRO;
     }
 
+    if(SCENE==SCENE_INTRO){
+        cam_fov = CAM_LENS_80mm;
+        cam_y = map(u_time,0.0,T_INTRO,.0,5.0);
+        aim_y = map(u_time,0.0,T_INTRO,.0,-1.);
+    }else
+    if(SCENE==SCENE_HELI){
+        cam_fov = CAM_LENS_24mm;
+        cam_x = 2.;
+        cam_y = 15.+sin(u_time*.2)*.1;
+        aim_y = -2.;
+        aim_z = -.5-abs(sin(u_time*.2))*.5;
+    }else
+    if(SCENE==SCENE_STREETLOOK){
+        cam_fov = CAM_LENS_35mm;
+        cam_x = -3.5;
+        cam_y = 0.2;
+        cam_z = 20.;
+        aim_x = 3.;
+        aim_y = sin(u_time*.1)*2.;
+        aim_z = sin(1.0+u_time*.1)*2.;
+    }else
+    if(SCENE==SCENE_END){
+        cam_fov = CAM_LENS_35mm;
+        cam_y = .3;
+    }
 
+    vec3 ro = vec3(cam_x,cam_y,cam_z);
+    vec3 ta = vec3(cam_x+aim_x,cam_y+aim_y,cam_z+aim_z);
 
+    // calculate ray direction
     vec3 ww = normalize (ta-ro);
     vec3 uu = normalize( cross(ww, vec3(0,1,0)));
     vec3 vv = normalize (cross(uu,ww));
-
-    // ray direction
-    vec3 rd = normalize(p.x*uu+p.y*vv+1.5*ww);
+    vec3 rd = normalize(p.x*uu+p.y*vv+cam_fov*ww);
 
     // sky simulation
     vec3 col = vec3(map(u_time,T_SUNRISE*.5,T_SUNRISE,1.0,.0),0.75,1.0) - 0.5*rd.y;
