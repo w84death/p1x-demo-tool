@@ -16,8 +16,8 @@ out vec4 FragColor;
 
 const float u_fft=1.0;
 
-const float WORLD_MAX = 256.0;
-const float WORLD_RES = 0.001;
+const float WORLD_MAX = 192.0;
+const float WORLD_RES = 0.0001;
 
 const float MAT_GROUND = 1.0;
 const float MAT_DARKBLUE = 2.0;
@@ -92,7 +92,10 @@ float opSmoothIntersection( float d1, float d2, float k) {
     float h = clamp( 0.5 - 0.5*(d2-d1)/k, 0.0, 1.0 );
     return mix( d2, d1, h ) + k*h*(1.0-h); }
 
-vec3 opCheapBend( in vec3 p, float k ){
+
+vec3 opCheapBend( in vec3 p, float bend )
+{
+    float k = sin(u_time)*bend; // or some other amount
     float c = cos(k*p.x);
     float s = sin(k*p.x);
     mat2  m = mat2(c,-s,s,c);
@@ -131,15 +134,18 @@ vec2 sdfWorld(in vec3 pos){
                    pos.y,
                    mod(abs(pos.z),10.0)-5.0);
 
+    float base = sdRoundBox(qb+vec3(.0,.5,.0),vec3(5.5,1.0,3.),0.1);
+
     vec2 bid = vec2(floor(abs(pos.x)/10.0)-5.0,
                    floor(abs(pos.z)/5.0)-2.5);
 
+    vec3 qbBend = opCheapBend(qb,rnd(bid)*0.04);
     float bheight = 2.0+10.0*abs(sin(u_time+rnd(bid)*.25));
 
-    vec3 qb1 = qb-vec3(3.1,0.,1.6);
-    vec3 qb2 = qb-vec3(-3.1,0.,1.6);
-    vec3 qb3 = qb-vec3(3.1,0.,-1.6);
-    vec3 qb4 = qb-vec3(-3.1,0.,-1.6);
+    vec3 qb1 = qbBend-vec3(3.1,0.,1.6);
+    vec3 qb2 = qbBend-vec3(-3.1,0.,1.6);
+    vec3 qb3 = qbBend-vec3(3.1,0.,-1.6);
+    vec3 qb4 = qbBend-vec3(-3.1,0.,-1.6);
 
     float b1=sdRoundBox(qb1,vec3(2.0,bheight,1.),0.2);
     float b2=sdRoundBox(qb2,vec3(2.0,bheight,1.),0.2);
@@ -159,7 +165,6 @@ vec2 sdfWorld(in vec3 pos){
     float roofs_ = opUnion(r1,opUnion(r2,opUnion(r3,r4)));
     float block_ = opUnion(b1,opUnion(b2,opUnion(b3,b4)));
 
-    float base = sdRoundBox(qb+vec3(.0,.5,.0),vec3(5.5,1.0,3.),0.1);
     block_ = opUnion(block_,base);
     block_ = opSmoothUnion(block_,roofs_,.25);
 
@@ -169,7 +174,7 @@ vec2 sdfWorld(in vec3 pos){
 
     vec3 qlamps = vec3(mod(abs(pos.x),5.0)-1.6,
                    pos.y,
-                   mod(abs(pos.z),2.0)-1.0);
+                   mod(abs(pos.z),5.0)-2.5);
 
     float lampBase = sdBox(qlamps,vec3(0.05,.1,0.05));
     float lampLeg = sdRoundBox(qlamps,vec3(0.01,2.0,0.01),0.04);
@@ -194,18 +199,75 @@ vec2 sdfWorld(in vec3 pos){
     vec2 carRid = vec2(floor(abs(pos.x)/20.0)-0.8,
                    floor(abs(pos.z-u_time*5.0)/2.0)-1.);
 
-    float carsL = sdRoundBox(qcarsL, vec3(.12,.1+rnd(carLid),.3+rnd(carLid)*.1),0.3);
-    float carsR = sdRoundBox(qcarsR, vec3(.12,.1+rnd(carRid),.3+rnd(carRid)*.1),0.3);
+    float rndL = rnd(carLid)*.1;
+    float rndR = rnd(carRid)*.1;
+    float carsL = opSubtraction(
+        sdBox(qcarsL-vec3(.0,-.25,0.), vec3(1,.2,1.)),
+        sdRoundBox(qcarsL-vec3(.0,-.1+rndL*4.,0.), vec3(.12,.1+rndL*4.,.3+rndL),0.2)
+    );
+    float carsR = opSubtraction(
+        sdBox(qcarsR-vec3(.0,-.25,0.), vec3(1.,.2,1.)),
+        sdRoundBox(qcarsR-vec3(.0,-.1+rndR*4.,0.), vec3(.12,.1+rndR*4.,.3+rndR),0.2)
+    );
 
-    float cars_ = opUnion(carsL,carsR);
+    float carSpd = u_time*5.0;
+    vec3 qcars2L = vec3(mod(abs(pos.x+carSpd),2.0)-1.,
+                   pos.y-5.2,
+                   mod(-pos.z,10.0)-0.6);
+    vec3 qcars2R = vec3(mod(abs(pos.x-carSpd),2.0)-1.,
+                   pos.y-5.2,
+                   mod(pos.z,10.0)-0.6);
+
+    vec2 car2Lid = vec2(floor(abs(pos.x+carSpd)/2.0)-1.,
+                   floor(abs(pos.z)/10.0)-.8);
+    vec2 car2Rid = vec2(floor(abs(pos.x-carSpd)/2.0)-1.,
+                   floor(abs(pos.z)/10.0)-.8);
+
+    float rnd2L = rnd(car2Lid)*.1;
+    float rnd2R = rnd(car2Rid)*.1;
+
+    float cars2L = opSubtraction(
+        sdBox(qcars2L-vec3(.0,-.2,0.), vec3(1.,.4,1.)),
+        sdRoundBox(qcars2L-vec3(.0,-.1+rnd2L*4.,0.), vec3(.1+rnd2L*4.,.3+rnd2L,.12),0.2)
+    );
+    float cars2R = opSubtraction(
+        sdBox(qcars2R-vec3(.0,-.2,0.), vec3(1.,.4,1.)),
+        sdRoundBox(qcars2R-vec3(.0,-.1+rnd2R*4.,0.), vec3(.1+rnd2R*4.,.3+rnd2R,.12),0.2)
+    );
+
+    float cars_ = opUnion(
+        opUnion(carsL,carsR),
+        opUnion(cars2L,cars2R)
+    );
 
     if(cars_<WORLD_RES) m=MAT_CARS;
 
-    // floating cars + wiadukt
+    vec3 qhiRoad = vec3(mod(pos.x,5.0)-2.5,
+                   pos.y-5.0,
+                   mod(abs(pos.z-5.),10.0)-5.);
 
+    float hiRoad = opUnion(
+        opUnion(
+            sdBox(qhiRoad-vec3(.0,.0,.0),vec3(2.5,.1,1.4)),
+            sdBox(qhiRoad-vec3(.0,-.15,.0),vec3(2.5,.1,1.))),
+        opSubtraction(
+            sdRoundBox(qhiRoad-vec3(.0,.3,.0),vec3(2.5,.6,1.),.3),
+            sdRoundBox(qhiRoad-vec3(.0,.3,.0),vec3(2.5,.5,1.6),.1)
+        )
+    );
+    float hiBase = opSubtraction(
+        sdRoundBox(qhiRoad-vec3(.0,-3.2,.0),vec3(.2,2.6,.8),.2),
+        sdRoundBox(qhiRoad-vec3(.0,-3.,.0),vec3(.1,2.8,1.2),.1)
+    );
+    float hiRoads_ = opUnion(hiRoad, hiBase);
+
+    if(hiBase<WORLD_RES) m=MAT_CONCRETE;
+    if(hiRoad<WORLD_RES) m=MAT_ASPHALT;
 
     float city_ = opUnion(opUnion(opUnion(block_,pavement_), lamps_),cars_);
-    pos -= vec3(.0,map(u_time,.0,5.0,-2.2,.3),-6.0);
+    city_ = opUnion(city_, hiRoads_);
+
+    pos -= vec3(.0,map(u_time,.0,T_INTRO*.8,15.,1.),-15.0);
 
     float p1 = sdBox(pos-vec3(-0.7,0.95,.0),vec3(0.05,0.95,0.05));
     float p2 = sdBox(pos-vec3(-0.5,1.85,.0),vec3(0.15,0.05,0.05));
@@ -335,7 +397,7 @@ vec3 getMaterial(vec3 p, vec3 nor, float id){
         m=vec3(1.,1.,1.)*nor*.2;
     }else
     if(id==MAT_ASPHALT){
-        m=vec3(.01,.01,.02);
+        m=vec3(-2.,-2.,-1.5);
     }else
     if(id==MAT_CARS){
         m=vec3(-1.,-1.,1.)+nor*.1;
@@ -405,8 +467,8 @@ vec3 render(in vec2 p){
 
     if(SCENE==SCENE_INTRO){
         cam_fov = CAM_LENS_50mm;
-        cam_y = map(u_time,0.0,T_INTRO,25.0,2.0);
-        aim_y = map(u_time,0.0,T_INTRO,-4.0,0.0);
+        cam_y = map(u_time,0.0,T_INTRO*.8,25.0,2.0);
+        aim_y = map(u_time,0.0,T_INTRO*.8,-2.0,0.0);
     }else
     if(SCENE==SCENE_HELI){
         cam_fov = CAM_LENS_24mm;

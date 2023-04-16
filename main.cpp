@@ -17,8 +17,8 @@
 
 // Default values
 const char* appName = "-=[ P1X DEMO TOOL ]=-";
-float windowWidth = 1280.0;
-float windowHeight = 720.0;
+float windowWidth = 640.0;
+float windowHeight = 360.0;
 bool fullscreen = false;
 std::string shaderFileName = "shader.glsl";
 
