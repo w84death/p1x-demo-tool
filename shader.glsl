@@ -16,7 +16,7 @@ out vec4 FragColor;
 
 const float u_fft=1.0;
 
-const float WORLD_MAX = 80.0;
+const float WORLD_MAX = 256.0;
 const float WORLD_RES = 0.001;
 
 const float MAT_GROUND = 1.0;
@@ -41,13 +41,15 @@ const int SCENE_HELI = 2;
 const int SCENE_STREETLOOK = 3;
 const int SCENE_END = 4;
 
-float CAM_LENS_ABERRATION = 0.003;
-float CAM_LENS_DISTOR_K1 = 0.0005;
-float CAM_LENS_DISTOR_K2 = 0.00025;
-const float CAM_LENS_24mm = 2.0;
+const float FOG_DIST = 0.05;
+const vec3 FOG_COLOR = vec3(.8,.8,.8);
+const float CAM_LENS_ABERRATION = 0.002;
+const float CAM_LENS_DISTOR_K1 = 0.0015;
+const float CAM_LENS_DISTOR_K2 = 0.0005;
+const float CAM_LENS_24mm = 1.8;
 const float CAM_LENS_35mm = 3.5;
-const float CAM_LENS_50mm = 5.0;
-const float CAM_LENS_80mm = 8.0;
+const float CAM_LENS_50mm = 7.0;
+const float CAM_LENS_80mm = 10.0;
 
 /*
  * SDF BRUSHES
@@ -366,9 +368,9 @@ vec3 getColor(vec3 pos, vec3 nor,vec3 rd, float material_id){
     col += mate*vec3(0.5,0.8,0.9)*sky_dif;
     col *= ao;
     col *= sunrise;
+
     return col;
 }
-
 
 
 /*
@@ -383,7 +385,7 @@ vec3 render(in vec2 p){
     float cam_x = 0.0;
     float cam_y = 0.5;
     float aim_x = cam_x;
-    float aim_y = cam_y;
+    float aim_y = 0.0;
     float aim_z = -1.0;
 
     if(u_time<T_INTRO){
@@ -402,9 +404,9 @@ vec3 render(in vec2 p){
     }
 
     if(SCENE==SCENE_INTRO){
-        cam_fov = CAM_LENS_80mm;
-        cam_y = map(u_time,0.0,T_INTRO,.0,5.0);
-        aim_y = map(u_time,0.0,T_INTRO,.0,-1.);
+        cam_fov = CAM_LENS_50mm;
+        cam_y = map(u_time,0.0,T_INTRO,25.0,2.0);
+        aim_y = map(u_time,0.0,T_INTRO,-4.0,0.0);
     }else
     if(SCENE==SCENE_HELI){
         cam_fov = CAM_LENS_24mm;
@@ -450,9 +452,9 @@ vec3 render(in vec2 p){
         vec3 pos = ro+rd*ray_hit;
         vec3 nor = calcNormal(pos);
         col = getColor(pos,nor,rd,material_id);
-        float fogDist = 0.0333;
-        float fogAmount = 1.0 - exp( -ray_hit*fogDist );
-        vec3  fogColor  = vec3(0.6,.7,.8)* map(u_time,T_SUNRISE*.25,T_SUNRISE,.01,1.0);
+
+        float fogAmount = 1.0 - exp( -ray_hit*FOG_DIST );
+        vec3  fogColor  = FOG_COLOR* map(u_time,T_SUNRISE*.25,T_SUNRISE,.01,1.0);
         col = mix( col, fogColor, fogAmount );
 
     }
@@ -475,22 +477,12 @@ vec2 chromaticAberration(vec2 coord, float radius, vec2 direction, float strengt
  *
  * */
 void main() {
-    float radius = length(TexCoord);
-    vec2 distortedCoord = barrelDistortion(TexCoord)*TexCoord;
+    vec3 col = render(barrelDistortion(TexCoord)*TexCoord);
 
-    vec2 direction = normalize(TexCoord);
-    vec2 redCoord = chromaticAberration(distortedCoord, radius, TexCoord, -CAM_LENS_ABERRATION);
-    vec2 greenCoord = distortedCoord;
-    vec2 blueCoord = chromaticAberration(distortedCoord, radius, TexCoord, CAM_LENS_ABERRATION);
+    float filmNoise = rnd(TexCoord+vec2(u_time));
+    col -= col*vec3(filmNoise)*.2;
 
-    float red = render(redCoord).r;
-    float green = render(greenCoord).g;
-    float blue = render(blueCoord).b;
-
-    vec3 col = vec3(red, green, blue);
-
-    // color/exposure correction
-    col.gr *=  0.8;
+    // color/exposure correction;
     col = pow (col, vec3(0.4545));
     FragColor = vec4(col, 1.0);
 }
