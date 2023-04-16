@@ -13,10 +13,6 @@ public:
     Shader(const GLchar* vertexPath, const GLchar* fragmentPath) {
         std::string vertexCode, fragmentCode;
         std::ifstream vShaderFile, fShaderFile;
-
-        vShaderFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
-        fShaderFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
-
         vShaderFile.open(vertexPath);
         fShaderFile.open(fragmentPath);
 

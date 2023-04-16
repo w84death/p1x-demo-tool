@@ -9,6 +9,7 @@ float demoTime = 0.0;
 const float demoLength = 60.0;
 bool isPlaying = true;
 bool fullscreen = false;
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
 
 void _init(void){};
 int main(int argc, char* argv[]) {
@@ -35,6 +36,7 @@ int main(int argc, char* argv[]) {
     // Create a GLFW window
     GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "-=[ P1X DEMO TOOL ]=-", nullptr, nullptr);
     glfwMakeContextCurrent(window);
+    glfwSetKeyCallback(window, key_callback);
 
     // Initialize GLEW
     glewExperimental = GL_TRUE;
@@ -132,4 +134,50 @@ int main(int argc, char* argv[]) {
     glfwTerminate();
 
     return 0;
+}
+
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
+        glfwSetWindowShouldClose(window, GL_TRUE);
+    }
+
+    if (key == GLFW_KEY_SPACE && action == GLFW_PRESS) {
+        isPlaying = !isPlaying;
+    }
+
+    if (key == GLFW_KEY_LEFT) {
+        if (mods & GLFW_MOD_SHIFT) {
+            if(demoTime>0.1) demoTime -= 0.1;
+            else demoTime=0.0;
+        } else {
+            if(demoTime>1.0) demoTime -= 1.0;
+            else demoTime=0.0;
+        }
+    }
+
+    if (key == GLFW_KEY_RIGHT) {
+        if (mods & GLFW_MOD_SHIFT) {
+            if(demoTime<demoLength-0.1) demoTime += 0.1;
+            else demoTime=demoLength;
+        } else {
+            if(demoTime<demoLength-1.0) demoTime += 1.0;
+            else demoTime=demoLength;
+        }
+    }
+
+    if (key == GLFW_KEY_UP && action == GLFW_PRESS) {
+        if (mods & GLFW_MOD_SHIFT) {
+            // Handle up arrow press with Shift
+        } else {
+            // Handle up arrow press without Shift
+        }
+    }
+
+    if (key == GLFW_KEY_DOWN && action == GLFW_PRESS) {
+        if (mods & GLFW_MOD_SHIFT) {
+            // Handle down arrow press with Shift
+        } else {
+            // Handle down arrow press without Shift
+        }
+    }
 }
