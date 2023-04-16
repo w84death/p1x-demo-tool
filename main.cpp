@@ -17,9 +17,8 @@
 
 // Default values
 const char* appName = "-=[ P1X DEMO TOOL ]=-";
-float windowWidth = 640.0f;
-float windowHeight = 360.0f;
-float resolutionPercentage = 0.5f;
+float windowWidth = 640.0;
+float windowHeight = 360.0;
 bool fullscreen = false;
 std::string shaderFileName = "shader.glsl";
 
@@ -43,9 +42,7 @@ int main(int argc, char* argv[]) {
       windowWidth = std::stof(argv[++i]);
     } else if (arg == "--height" && i + 1 < argc) {
       windowHeight = std::stof(argv[++i]);
-    } else if (arg == "--percentage" && i + 1 < argc) {
-      resolutionPercentage = std::stof(argv[++i]);
-    } else if (arg == "--fullscreen") {
+    }else if (arg == "--fullscreen") {
       fullscreen = true;
     } else if (arg == "--shader" && i + 1 < argc) {
       shaderFileName = argv[++i];
@@ -120,7 +117,7 @@ int main(int argc, char* argv[]) {
 
     void main() {
       gl_Position = vec4(aPos, 0.0, 1.0);
-      TexCoord = (2.0 * (aPos) * vec2()glsl" << (windowWidth / resolutionPercentage) << ", " << (windowHeight / resolutionPercentage) << R"glsl())/ )glsl" << (windowHeight / resolutionPercentage) << R"glsl(;
+      TexCoord = (2.0 * (aPos) * vec2()glsl" << (windowWidth) << ", " << (windowHeight) << R"glsl())/ )glsl" << (windowHeight) << R"glsl(;
     }
   )glsl";
   std::string vertexShaderSource = vertexShaderSourceStream.str();

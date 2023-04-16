@@ -16,7 +16,7 @@ out vec4 FragColor;
 
 const float u_fft=1.0;
 
-const float WORLD_MAX = 128.0;
+const float WORLD_MAX = 80.0;
 const float WORLD_RES = 0.001;
 
 const float MAT_GROUND = 1.0;
@@ -41,10 +41,13 @@ const int SCENE_HELI = 2;
 const int SCENE_STREETLOOK = 3;
 const int SCENE_END = 4;
 
+float CAM_LENS_ABERRATION = 0.003;
+float CAM_LENS_DISTOR_K1 = 0.0005;
+float CAM_LENS_DISTOR_K2 = 0.00025;
 const float CAM_LENS_24mm = 2.0;
-const float CAM_LENS_35mm = 3.0;
-const float CAM_LENS_50mm = 4.0;
-const float CAM_LENS_80mm = 6.0;
+const float CAM_LENS_35mm = 3.5;
+const float CAM_LENS_50mm = 5.0;
+const float CAM_LENS_80mm = 8.0;
 
 /*
  * SDF BRUSHES
@@ -456,38 +459,38 @@ vec3 render(in vec2 p){
     return col;
 }
 
-/*
- * UV SCREEN RATIO
- *
- * */
-vec2 getUV(in vec2 fragCoord, vec2 offset){
-    return fragCoord+offset;
+float barrelDistortion(vec2 pos) {
+    float radius = length(pos);
+
+    return 1.0 + CAM_LENS_DISTOR_K1 * pow(radius, 2.0) + CAM_LENS_DISTOR_K2 * pow(radius, 4.0);
 }
 
-/*
- * 4xAA
- *
- * */
-vec3 renderAAAA(in vec2 fragCoord){
-    vec4 e =vec4(0.125,-0.125,0.375,-0.375);
-    vec3 colAA = render(getUV(fragCoord,e.xz))+
-    render(getUV(fragCoord,e.yw))+
-    render(getUV(fragCoord,e.wx))+
-    render(getUV(fragCoord,e.zy));
-
-    return colAA/=4.0;
+vec2 chromaticAberration(vec2 coord, float radius, vec2 direction, float strength) {
+    return coord + strength * radius * direction;
 }
+
 
 /*
  * MAIN
  *
  * */
 void main() {
-    vec3 col = render(TexCoord);
+    float radius = length(TexCoord);
+    vec2 distortedCoord = barrelDistortion(TexCoord)*TexCoord;
+
+    vec2 direction = normalize(TexCoord);
+    vec2 redCoord = chromaticAberration(distortedCoord, radius, TexCoord, -CAM_LENS_ABERRATION);
+    vec2 greenCoord = distortedCoord;
+    vec2 blueCoord = chromaticAberration(distortedCoord, radius, TexCoord, CAM_LENS_ABERRATION);
+
+    float red = render(redCoord).r;
+    float green = render(greenCoord).g;
+    float blue = render(blueCoord).b;
+
+    vec3 col = vec3(red, green, blue);
 
     // color/exposure correction
     col.gr *=  0.8;
-
     col = pow (col, vec3(0.4545));
     FragColor = vec4(col, 1.0);
 }
