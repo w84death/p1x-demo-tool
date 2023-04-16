@@ -17,7 +17,7 @@ out vec4 FragColor;
 const float u_fft=1.0;
 
 const float WORLD_MAX = 192.0;
-const float WORLD_RES = 0.0001;
+const float WORLD_RES = 0.001;
 
 const float MAT_GROUND = 1.0;
 const float MAT_DARKBLUE = 2.0;
