@@ -17,22 +17,19 @@ public:
         vShaderFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
         fShaderFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
 
-        try {
-            vShaderFile.open(vertexPath);
-            fShaderFile.open(fragmentPath);
+        vShaderFile.open(vertexPath);
+        fShaderFile.open(fragmentPath);
 
-            std::stringstream vShaderStream, fShaderStream;
-            vShaderStream << vShaderFile.rdbuf();
-            fShaderStream << fShaderFile.rdbuf();
+        std::stringstream vShaderStream, fShaderStream;
+        vShaderStream << vShaderFile.rdbuf();
+        fShaderStream << fShaderFile.rdbuf();
 
-            vShaderFile.close();
-            fShaderFile.close();
+        vShaderFile.close();
+        fShaderFile.close();
 
-            vertexCode = vShaderStream.str();
-            fragmentCode = fShaderStream.str();
-        } catch (std::ifstream::failure e) {
-            std::cerr << "ERROR::SHADER::FILE_NOT_SUCCESFULLY_READ" << std::endl;
-        }
+        vertexCode = vShaderStream.str();
+        fragmentCode = fShaderStream.str();
+
         const GLchar* vShaderCode = vertexCode.c_str();
         const GLchar* fShaderCode = fragmentCode.c_str();
 
@@ -63,10 +60,6 @@ public:
         glAttachShader(this->Program, fragment);
         glLinkProgram(this->Program);
         glGetProgramiv(this->Program, GL_LINK_STATUS, &success);
-        if (!success) {
-            glGetProgramInfoLog(this->Program, 512, nullptr, infoLog);
-            std::cerr << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
-        }
 
         glDeleteShader(vertex);
         glDeleteShader(fragment);

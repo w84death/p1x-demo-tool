@@ -4,15 +4,28 @@
 #include <glm/glm.hpp>
 #include "shader.h"
 
-const GLuint WIDTH = 640, HEIGHT = 360;
+int WIDTH = 640, HEIGHT = 360;
+float demoTime = 0.0;
+const float demoLength = 60.0;
+bool isPlaying = true;
+bool fullscreen = false;
 
 void _init(void){};
-int main() {
-    // Initialize GLFW
-    if (!glfwInit()) {
-        std::cerr << "Failed to initialize GLFW" << std::endl;
-        return -1;
+int main(int argc, char* argv[]) {
+
+    for (int i = 1; i < argc; i++) {
+        std::string arg = argv[i];
+
+        if (arg == "--width" && i + 1 < argc) {
+            WIDTH = std::stof(argv[++i]);
+        } else if (arg == "--height" && i + 1 < argc) {
+            HEIGHT = std::stof(argv[++i]);
+        }else if (arg == "--fullscreen") {
+            fullscreen = true;
+        }
     }
+
+    glfwInit();
 
     // Set OpenGL version and profile
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
@@ -20,20 +33,12 @@ int main() {
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
     // Create a GLFW window
-    GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Simple OpenGL 4 Demo", nullptr, nullptr);
-    if (!window) {
-        std::cerr << "Failed to create GLFW window" << std::endl;
-        glfwTerminate();
-        return -1;
-    }
+    GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "-=[ P1X DEMO TOOL ]=-", nullptr, nullptr);
     glfwMakeContextCurrent(window);
 
     // Initialize GLEW
     glewExperimental = GL_TRUE;
-    if (glewInit() != GLEW_OK) {
-        std::cerr << "Failed to initialize GLEW" << std::endl;
-        return -1;
-    }
+    glewInit();
 
     // Set up vertex data
     GLfloat vertices[] = {
@@ -88,9 +93,9 @@ int main() {
     GLint widthLocation = glGetUniformLocation(shader.Program, "width");
     GLint heightLocation = glGetUniformLocation(shader.Program, "height");
 
-    while (!glfwWindowShouldClose(window)) {
-        float demoTime = static_cast<float>(glfwGetTime());
 
+    float lastTime = static_cast<float>(glfwGetTime());
+    while (!glfwWindowShouldClose(window)) {
         // Clear the screen
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
@@ -107,6 +112,17 @@ int main() {
         // Swap buffers and poll events
         glfwSwapBuffers(window);
         glfwPollEvents();
+
+        float nowTime = static_cast<float>(glfwGetTime());
+        float deltaTime = nowTime - lastTime;
+        lastTime = nowTime;
+        int fps = static_cast<int>(1.0f / deltaTime);
+        int frameMs = static_cast<int>(deltaTime * 1000);
+
+        if(isPlaying) demoTime += deltaTime;
+
+        std::cout << "[" << WIDTH << "x" << HEIGHT << "] " << fps << " fps, " << frameMs << " ms" << ", DEMO TIME: " << demoTime << "s" << std::endl;
+
     }
 
     // Clean up
