@@ -4,7 +4,7 @@
 #include <glm/glm.hpp>
 #include "shader.h"
 
-const GLuint WIDTH = 320, HEIGHT = 180;
+const GLuint WIDTH = 640, HEIGHT = 360;
 
 void _init(void){};
 int main() {

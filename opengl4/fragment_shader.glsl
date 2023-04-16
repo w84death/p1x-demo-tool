@@ -36,10 +36,10 @@ const vec3 FOG_COLOR = vec3(.8,.8,.8);
 const float CAM_LENS_ABERRATION = 0.002;
 const float CAM_LENS_DISTOR_K1 = 0.0015;
 const float CAM_LENS_DISTOR_K2 = 0.0005;
-const float CAM_LENS_24mm = 1.8;
-const float CAM_LENS_35mm = 3.5;
-const float CAM_LENS_50mm = 7.0;
-const float CAM_LENS_80mm = 10.0;
+const float CAM_LENS_24mm = 0.8;
+const float CAM_LENS_35mm = 1.5;
+const float CAM_LENS_50mm = 2.0;
+const float CAM_LENS_80mm = 4.0;
 
 /*
  * SDF BRUSHES
