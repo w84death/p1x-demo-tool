@@ -424,7 +424,6 @@ vec3 getColor(vec3 pos, vec3 nor,vec3 rd, float material_id){
     return col;
 }
 
-
 /*
  * THE RENDERER
  *
