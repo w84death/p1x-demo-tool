@@ -6,10 +6,13 @@ C++ tools for creating GLSL demos (targetting 64K).
 
 ![Demo Screenshot](screen2.jpg)
 
-## Compiling
-```
-./compile.sh
-```
+## Requiments
+
+### Ubuntu
+```apt install libglfw3```
+
+### Arch Linux (Steam Deck)
+```pacman -S glfw```
 
 ## Usage
 
@@ -19,3 +22,17 @@ C++ tools for creating GLSL demos (targetting 64K).
 ```
 
 For statistics use ```--stats```, for fullscreen use ```--fullscreen```.
+
+## Compiling
+
+### Ubuntu
+```
+apt install libglew-dev libglfw3-dev upx```
+```
+
+### Arch Linux (Steam Deck)
+```pacman -S glfw glm glew upx```
+
+```
+./compile.sh
+```
