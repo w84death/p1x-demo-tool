@@ -4,12 +4,13 @@
 #include <glm/glm.hpp>
 #include "shader.h"
 
-int WIDTH = 320, HEIGHT = 180;
-float resPercentage = .25;
+int WIDTH = 1280, HEIGHT = 720;
+float resScale = .25;
 float demoTime = 0.0;
 const float demoLength = 60.0;
 bool isPlaying = true;
 bool fullscreen = false;
+float lastConsoleOut = -0.1f;
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
@@ -67,9 +68,13 @@ int main(int argc, char* argv[]) {
             WIDTH = std::stof(argv[++i]);
         } else if (arg == "--height" && i + 1 < argc) {
             HEIGHT = std::stof(argv[++i]);
+        } else if (arg == "--resolution-scale" && i + 1 < argc){
+            resScale = std::stof(argv[++i]);
         }else if (arg == "--fullscreen") {
             fullscreen = true;
         }
+
+
     }
 
     glfwInit();
@@ -111,17 +116,13 @@ int main(int argc, char* argv[]) {
         2, 3, 0
     };
 
-
     GLuint VAO, VBO, EBO;
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
     glGenBuffers(1, &EBO);
-
     glBindVertexArray(VAO);
-
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
@@ -132,9 +133,7 @@ int main(int argc, char* argv[]) {
     // Texture coordinate attribute
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
     glEnableVertexAttribArray(1);
-
     glBindVertexArray(0);
-
 
     // Create half-resolution framebuffer
     GLuint framebuffer;
@@ -145,7 +144,7 @@ int main(int argc, char* argv[]) {
     GLuint halfResTexture;
     glGenTextures(1, &halfResTexture);
     glBindTexture(GL_TEXTURE_2D, halfResTexture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, WIDTH / 2, HEIGHT / 2, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, WIDTH*resScale, HEIGHT*resScale, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
@@ -154,7 +153,6 @@ int main(int argc, char* argv[]) {
 
     // Unbind framebuffer
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
 
     // Uniforms
     GLint timeLocation = glGetUniformLocation(shader.Program, "time");
@@ -166,13 +164,13 @@ int main(int argc, char* argv[]) {
     while (!glfwWindowShouldClose(window)) {
         // Render to half-resolution framebuffer
         glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
-        glViewport(0, 0, WIDTH / 2, HEIGHT / 2);
+        glViewport(0, 0, WIDTH*resScale, HEIGHT*resScale);
         glClear(GL_COLOR_BUFFER_BIT);
 
         shader.Use();
         glUniform1f(timeLocation, demoTime);
-        glUniform1f(widthLocation, static_cast<float>(WIDTH/2));
-        glUniform1f(heightLocation, static_cast<float>(HEIGHT/2));
+        glUniform1f(widthLocation, static_cast<float>(WIDTH*resScale));
+        glUniform1f(heightLocation, static_cast<float>(HEIGHT*resScale));
         glBindVertexArray(VAO);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
@@ -202,7 +200,10 @@ int main(int argc, char* argv[]) {
 
         if(isPlaying) demoTime += deltaTime;
 
-        std::cout << "[" << WIDTH << "x" << HEIGHT << "] " << fps << " fps, " << frameMs << " ms" << ", DEMO TIME: " << demoTime << "s" << std::endl;
+        if (fabs(demoTime - lastConsoleOut) >= 0.1) {
+            lastConsoleOut = demoTime;
+            std::cout << "[" << WIDTH*resScale << "x" << HEIGHT*resScale << "] => [ "<< WIDTH <<"x"<< HEIGHT << " ] " << fps << " fps, " << frameMs << " ms" << ", DEMO TIME: " << demoTime << "s" << std::endl;
+        }
     }
 
     // Clean up
