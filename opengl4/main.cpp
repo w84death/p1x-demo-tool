@@ -73,11 +73,19 @@ int main(int argc, char* argv[]) {
         }else if (arg == "--fullscreen") {
             fullscreen = true;
         }
-
-
     }
 
     glfwInit();
+
+    GLFWmonitor* monitor = nullptr;
+    const GLFWvidmode* videoMode = nullptr;
+
+    if (fullscreen) {
+        monitor = glfwGetPrimaryMonitor();
+        videoMode = glfwGetVideoMode(monitor);
+        WIDTH = videoMode->width;
+        HEIGHT = videoMode->height;
+    }
 
     // Set OpenGL version and profile
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
