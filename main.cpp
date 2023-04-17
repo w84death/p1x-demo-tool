@@ -6,6 +6,18 @@
 #define GLT_IMPLEMENTATION
 #include "gltext.h" /* https://github.com/vallentin/glText */
 #define MINIAUDIO_IMPLEMENTATION
+
+#define MA_NO_FLAC
+#define MA_NO_DSOUND
+#define MA_NO_WEBAUDIO
+#define MA_NO_WASAPI
+#define MA_NO_OPENSL
+#define MA_NO_WAV
+#define MA_DEBUG_OUTPUT
+#define MA_NO_AAUDIO
+#define MA_NO_SNDIO
+#define MA_NO_COREAUDIO
+#define MA_NO_WINMM
 #include "miniaudio.h" /* https://miniaud.io/index.html */
 
 int WIDTH = 1280, HEIGHT = 720;
