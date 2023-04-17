@@ -8,16 +8,19 @@
 #include "gltext.h" /* https://github.com/vallentin/glText */
 
 int WIDTH = 1280, HEIGHT = 720;
-float resScale = .25f;
+float resScale = .5f;
 float demoTime = 0.0f;
 const float demoLength = 60.0f;
 bool isPlaying = true;
 bool fullscreen = false;
 float lastConsoleOut = -0.1f;
+bool showStats = false;
 char stats[512];
+char demoName[32] = "P1X DEMO TOOL V2";
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
+        std::cout << "Bye!\n\n(c)2023.04 Krzysztof Krystian Jankowski ^  P1X" << std::endl;
         glfwSetWindowShouldClose(window, GL_TRUE);
     }
 
@@ -64,6 +67,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 
 void _init(void){};
 int main(int argc, char* argv[]) {
+    std::cout << "Welcome to the -=[" << demoName << "]=- demo expeience.\n"<< std::endl;
 
     for (int i = 1; i < argc; i++) {
         std::string arg = argv[i];
@@ -74,10 +78,17 @@ int main(int argc, char* argv[]) {
             HEIGHT = std::stof(argv[++i]);
         } else if (arg == "--resolution-scale" && i + 1 < argc){
             resScale = std::stof(argv[++i]);
+        }else if (arg == "--stats") {
+            showStats = true;
         }else if (arg == "--fullscreen") {
             fullscreen = true;
-        }
+        }else {
+            std::cout << "Wrong pargument: " << arg << "\n\nUsage:\n$ ./demo --width 640 --height 360 --resolution-scale 0.25\n\nFor statistics use --stats, for fullscreen use --fullscreen." << std::endl;
+            return 0;
+       }
     }
+
+    std::cout << "Initializing engine with window resolution " << WIDTH << "x" << HEIGHT << ", internal rendering resolution " << WIDTH*resScale << "x" << HEIGHT*resScale << " (scale " << resScale << ")."<< std::endl;
 
     glfwInit();
 
@@ -95,10 +106,10 @@ int main(int argc, char* argv[]) {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-     glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
+    glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 
     // Create a GLFW window
-    GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "-=[ P1X DEMO TOOL ]=-", nullptr, nullptr);
+    GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, demoName, nullptr, nullptr);
     glfwMakeContextCurrent(window);
     glfwSetKeyCallback(window, key_callback);
 
@@ -115,7 +126,7 @@ int main(int argc, char* argv[]) {
     // Creating text
     GLTtext *textDemoName = gltCreateText();
     GLTtext *textStats = gltCreateText();
-    gltSetText(textDemoName, "P1X DEMO TOOL V2");
+    gltSetText(textDemoName, demoName);
 
     // Load shaders
     Shader shader("vertex_shader.glsl","fragment_shader.glsl");
@@ -218,25 +229,27 @@ int main(int argc, char* argv[]) {
         if(isPlaying) demoTime += deltaTime;
 
         // Text drawing
-        sprintf(stats, "%.0fx%.0f // %d fps, %d ms // Demo Time: %.0fs", WIDTH*resScale, HEIGHT*resScale, fps, frameMs, demoTime);
-        gltSetText(textStats, stats);
-
         gltBeginDraw();
 
         gltColor(1.0f, 1.0f, 1.0f, 1.0f);
 
         if(demoTime > 2.0f && demoTime < 5.0f)
-        gltDrawText2DAligned(textDemoName,
-            (GLfloat)(WIDTH*.5f),
-            (GLfloat)(HEIGHT*.5f),
-            3.0f/(resScale*4.0f),
-            GLT_CENTER, GLT_CENTER);
+            gltDrawText2DAligned(textDemoName,
+                (GLfloat)(WIDTH*.5f),
+                (GLfloat)(HEIGHT*.5f),
+                5.0f,
+                GLT_CENTER, GLT_CENTER);
 
-        gltDrawText2DAligned(textStats,
-            (GLfloat)(WIDTH*.5f),
-            12.0f,
-            1.0f/(resScale*4.0f),
-            GLT_CENTER, GLT_CENTER);
+        if(showStats){
+            sprintf(stats, "%.0fx%.0f // %d fps, %d ms // Demo Time: %.0fs", WIDTH*resScale, HEIGHT*resScale, fps, frameMs, demoTime);
+            gltSetText(textStats, stats);
+            gltDrawText2DAligned(textStats,
+                (GLfloat)(WIDTH*.5f),
+                24.0f,
+                2.0f,
+                GLT_CENTER, GLT_CENTER);
+        }
+
 
         gltEndDraw();
 
