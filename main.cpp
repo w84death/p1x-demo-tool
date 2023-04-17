@@ -1,315 +1,271 @@
-/*
- * -=[ P1X DEMO TOOL ]=-
- * by Krzysztof Krystian Jankowski
- *
- * (c) 2023.04
- * https://github.com/w84death/p1x-demo-tool
- * */
-
+#include <cstdio>
 #include <iostream>
-#include <fstream>
-#include <sstream>
-#include <string>
-#include <SDL2/SDL.h>
 #include <GL/glew.h>
-#include <SDL2/SDL_opengl.h>
-#include <SDL2/SDL_mixer.h>
+#include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
+#include "shader.h"
+#define GLT_IMPLEMENTATION
+#include "gltext.h" /* https://github.com/vallentin/glText */
 
-// Default values
-const char* appName = "-=[ P1X DEMO TOOL ]=-";
-float windowWidth = 640.0;
-float windowHeight = 360.0;
-bool fullscreen = false;
-std::string shaderFileName = "shader.glsl";
-
-// Application variables
-Uint32 frameStart;
+int WIDTH = 1280, HEIGHT = 720;
+float resScale = .5f;
+float demoTime = 0.0f;
+const float demoLength = 60.0f;
 bool isPlaying = true;
+bool fullscreen = false;
+float lastConsoleOut = -0.1f;
+bool showStats = false;
+char stats[512];
+char demoName[32] = "P1X DEMO TOOL V2";
 
-
-// Function prototypes
-std::string readFile(const std::string& filePath);
-GLuint createShader(GLenum shaderType, const std::string& source);
-GLuint createShaderProgram(const std::string& vertexShaderSource, const std::string& fragmentShaderSource);
-void render(GLuint shaderProgram, GLuint VAO);
-
-int main(int argc, char* argv[]) {
-  // Parse command-line arguments
-  for (int i = 1; i < argc; i++) {
-    std::string arg = argv[i];
-
-    if (arg == "--width" && i + 1 < argc) {
-      windowWidth = std::stof(argv[++i]);
-    } else if (arg == "--height" && i + 1 < argc) {
-      windowHeight = std::stof(argv[++i]);
-    }else if (arg == "--fullscreen") {
-      fullscreen = true;
-    } else if (arg == "--shader" && i + 1 < argc) {
-      shaderFileName = argv[++i];
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
+        std::cout << "Bye!\n\n(c)2023.04 Krzysztof Krystian Jankowski ^  P1X" << std::endl;
+        glfwSetWindowShouldClose(window, GL_TRUE);
     }
-  }
 
-  // Initialize SDL
-  if (SDL_Init(SDL_INIT_VIDEO) < 0) {
-    std::cerr << "Failed to initialize SDL: " << SDL_GetError() << std::endl;
-    return 1;
-  }
-
-  // Set OpenGL attributes
-  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
-  SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-  SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-
-  // Create the SDL window with the specified width, height, and fullscreen mode
-  Uint32 windowFlags = SDL_WINDOW_OPENGL;
-  if (fullscreen) {
-    windowFlags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
-  }
-  SDL_Window* window = SDL_CreateWindow(appName, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, windowWidth, windowHeight, windowFlags);
-
-  if (!window) {
-    std::cerr << "Failed to create window: " << SDL_GetError() << std::endl;
-    SDL_Quit();
-    return 1;
-  }
-
-  // Create OpenGL context
-  SDL_GLContext context = SDL_GL_CreateContext(window);
-  if (!context) {
-    std::cerr << "Failed to create OpenGL context: " << SDL_GetError() << std::endl;
-    SDL_DestroyWindow(window);
-    SDL_Quit();
-    return 1;
-  }
-
-  // Initialize GLEW
-  glewExperimental = GL_TRUE;
-  if (glewInit() != GLEW_OK) {
-    std::cerr << "Failed to initialize GLEW" << std::endl;
-    SDL_GL_DeleteContext(context);
-    SDL_DestroyWindow(window);
-    SDL_Quit();
-    return 1;
-  }
-
-  // Initialize SDL_mixer
-  if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) < 0) {
-    std::cerr << "SDL_mixer could not initialize! SDL_mixer Error: " << Mix_GetError() << std::endl;
-    return 1;
-  }
-
-  // Load music file
-  std::string musicFileName = "music.ogg";
-  Mix_Music* music = Mix_LoadMUS(musicFileName.c_str());
-  if (music == nullptr) {
-    std::cerr << "Failed to load music file: " << musicFileName << ", SDL_mixer Error: " << Mix_GetError() << std::endl;
-    return 1;
-  }
-
-  //  Vertex Shader
-  std::stringstream vertexShaderSourceStream;
-  vertexShaderSourceStream << R"glsl(
-    #version 330 core
-    layout (location = 0) in vec2 aPos;
-
-    out vec2 TexCoord;
-
-    void main() {
-      gl_Position = vec4(aPos, 0.0, 1.0);
-      TexCoord = (2.0 * (aPos) * vec2()glsl" << (windowWidth) << ", " << (windowHeight) << R"glsl())/ )glsl" << (windowHeight) << R"glsl(;
+    if (key == GLFW_KEY_SPACE && action == GLFW_PRESS) {
+        isPlaying = !isPlaying;
     }
-  )glsl";
-  std::string vertexShaderSource = vertexShaderSourceStream.str();
 
-  //  Fragment Shader (default or from arguments)
-  std::ifstream shaderFile(shaderFileName);
-  if (!shaderFile.is_open()) {
-    std::cerr << "Failed to open shader file: " << shaderFileName << std::endl;
-    return 1;
-  }
-  std::stringstream shaderStream;
-  shaderStream << shaderFile.rdbuf();
-  shaderFile.close();
-  std::string fragmentShaderSource = shaderStream.str();
-
-  // Compile shaders and create shader program
-  GLuint shaderProgram = createShaderProgram(vertexShaderSource, fragmentShaderSource);
-
-  // Create a VAO, VBO, and EBO for rendering a fullscreen quad
-  GLuint VAO, VBO, EBO;
-  glGenVertexArrays(1, &VAO);
-  glGenBuffers(1, &VBO);
-  glGenBuffers(1, &EBO);
-
-  glBindVertexArray(VAO);
-
-  GLfloat vertices[] = {
-    -1.0f,  1.0f,
-    -1.0f, -1.0f,
-     1.0f, -1.0f,
-     1.0f,  1.0f
-  };
-
-  GLuint indices[] = {
-    0, 1, 2,
-    2, 3, 0
-  };
-
-  glBindBuffer(GL_ARRAY_BUFFER, VBO);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-  glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(GLfloat), (void*)0);
-  glEnableVertexAttribArray(0);
-
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-
-  glBindBuffer(GL_ARRAY_BUFFER, 0);
-  glBindVertexArray(0);
-
-  float startTime = SDL_GetTicks() / 1000.0f;
-  float lastTime = startTime;
-  GLint timeUniformLocation = glGetUniformLocation(shaderProgram, "u_time");
-
-  // Render loop
-  bool running = true;
-  SDL_Event event;
-
-  // Play MIDI file (loop indefinitely)
-  Mix_PlayMusic(music, -1);
-
-  while (running) {
-    frameStart = SDL_GetTicks();
-    float demoTime = Mix_GetMusicPosition(music);
-    while (SDL_PollEvent(&event)) {
-      if (event.type == SDL_QUIT) {
-        running = false;
-      } else if (event.type == SDL_KEYDOWN) {
-        switch (event.key.keysym.sym) {
-          case SDLK_ESCAPE:
-            running = false;
-            break;
-          case SDLK_SPACE:
-            if (isPlaying) {
-              Mix_PauseMusic();
-            } else {
-              Mix_ResumeMusic();
-            }
-            isPlaying = !isPlaying;
-            break;
-          case SDLK_LEFT:
-          if (event.key.keysym.mod & KMOD_SHIFT) {
-            if(demoTime>0.1){
-              Mix_SetMusicPosition(demoTime - 0.1);
-            }else {
-              Mix_SetMusicPosition(0.0);
-            }
-          } else {
-            if(demoTime>1.0){
-              Mix_SetMusicPosition(demoTime - 1.0);
-            }else{
-              Mix_SetMusicPosition(0.0);
-            }
-          }
-          break;
-        case SDLK_RIGHT:
-          if (event.key.keysym.mod & KMOD_SHIFT) {
-            Mix_SetMusicPosition(demoTime + 0.1);
-          } else {
-            Mix_SetMusicPosition(demoTime + 1.0);
-          }
-          break;
-          default:
-            break;
+    if (key == GLFW_KEY_LEFT) {
+        if (mods & GLFW_MOD_SHIFT) {
+            if(demoTime>0.1) demoTime -= 0.1;
+            else demoTime=0.0;
+        } else {
+            if(demoTime>1.0) demoTime -= 1.0;
+            else demoTime=0.0;
         }
-      }
     }
 
-    // Calculate FPS and frame time
-    float currentTime = SDL_GetTicks() / 1000.0f;
-    float deltaTime = currentTime - lastTime;
-    lastTime = currentTime;
-    int fps = static_cast<int>(1.0f / deltaTime);
-    int frameMs = static_cast<int>(deltaTime * 1000);
+    if (key == GLFW_KEY_RIGHT) {
+        if (mods & GLFW_MOD_SHIFT) {
+            if(demoTime<demoLength-0.1) demoTime += 0.1;
+            else demoTime=demoLength;
+        } else {
+            if(demoTime<demoLength-1.0) demoTime += 1.0;
+            else demoTime=demoLength;
+        }
+    }
 
-    // Send timer to the shader
-    demoTime = Mix_GetMusicPosition(music);
-    glUniform1f(timeUniformLocation, demoTime);
+    if (key == GLFW_KEY_UP && action == GLFW_PRESS) {
+        if (mods & GLFW_MOD_SHIFT) {
+            // Handle up arrow press with Shift
+        } else {
+            // Handle up arrow press without Shift
+        }
+    }
 
-    // Print FPS and frame time to console
-    std::cout << "FPS: " << fps << " | " << frameMs << " ms" << " --- DEMO TIME: " << demoTime << "s ---" << std::endl;
-
-    render(shaderProgram, VAO);
-    SDL_GL_SwapWindow(window);
-  }
-
-  // Cleanup
-  Mix_FreeMusic(music);
-  Mix_CloseAudio();
-  glDeleteBuffers(1, &EBO);
-  glDeleteBuffers(1, &VBO);
-  glDeleteVertexArrays(1, &VAO);
-  glDeleteProgram(shaderProgram);
-  SDL_GL_DeleteContext(context);
-  SDL_DestroyWindow(window);
-  SDL_Quit();
-  return 0;
+    if (key == GLFW_KEY_DOWN && action == GLFW_PRESS) {
+        if (mods & GLFW_MOD_SHIFT) {
+            // Handle down arrow press with Shift
+        } else {
+            // Handle down arrow press without Shift
+        }
+    }
 }
 
-// Compiling Shader
-GLuint createShader(GLenum shaderType, const std::string& source) {
-  GLuint shader = glCreateShader(shaderType);
-  const char* sourceCStr = source.c_str();
-  glShaderSource(shader, 1, &sourceCStr, nullptr);
-  glCompileShader(shader);
+void _init(void){};
+int main(int argc, char* argv[]) {
+    std::cout << "Welcome to the -=[" << demoName << "]=- demo expeience.\n"<< std::endl;
 
-  GLint success;
-  glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
-  if (!success) {
-    char infoLog[512];
-    glGetShaderInfoLog(shader, 512, nullptr, infoLog);
-    std::cerr << "Failed to compile shader: " << infoLog << std::endl;
-    glDeleteShader(shader);
+    for (int i = 1; i < argc; i++) {
+        std::string arg = argv[i];
+
+        if (arg == "--width" && i + 1 < argc) {
+            WIDTH = std::stof(argv[++i]);
+        } else if (arg == "--height" && i + 1 < argc) {
+            HEIGHT = std::stof(argv[++i]);
+        } else if (arg == "--resolution-scale" && i + 1 < argc){
+            resScale = std::stof(argv[++i]);
+        }else if (arg == "--stats") {
+            showStats = true;
+        }else if (arg == "--fullscreen") {
+            fullscreen = true;
+        }else {
+            std::cout << "Wrong pargument: " << arg << "\n\nUsage:\n$ ./demo --width 640 --height 360 --resolution-scale 0.25\n\nFor statistics use --stats, for fullscreen use --fullscreen." << std::endl;
+            return 0;
+       }
+    }
+
+    std::cout << "Initializing engine with window resolution " << WIDTH << "x" << HEIGHT << ", internal rendering resolution " << WIDTH*resScale << "x" << HEIGHT*resScale << " (scale " << resScale << ")."<< std::endl;
+
+    glfwInit();
+
+    GLFWmonitor* monitor = nullptr;
+    const GLFWvidmode* videoMode = nullptr;
+
+    if (fullscreen) {
+        monitor = glfwGetPrimaryMonitor();
+        videoMode = glfwGetVideoMode(monitor);
+        WIDTH = videoMode->width;
+        HEIGHT = videoMode->height;
+    }
+
+    // Set OpenGL version and profile
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
+
+    // Create a GLFW window
+    GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, demoName, nullptr, nullptr);
+    glfwMakeContextCurrent(window);
+    glfwSetKeyCallback(window, key_callback);
+
+    // Initialize GLEW
+    glewExperimental = GL_TRUE;
+    glewInit();
+
+    // Set viewport
+    glViewport(0, 0, WIDTH, HEIGHT);
+
+    // Initialize glText
+    gltInit();
+
+    // Creating text
+    GLTtext *textDemoName = gltCreateText();
+    GLTtext *textStats = gltCreateText();
+    gltSetText(textDemoName, demoName);
+
+    // Load shaders
+    Shader shader("vertex_shader.glsl","fragment_shader.glsl");
+    Shader passthroughShader("pass_vertex_shader.glsl", "pass_fragment_shader.glsl");
+
+
+    // Define vertices for the plane
+    GLfloat vertices[] = {
+        // Positions      // Texture Coords
+        -1.0f,  1.0f, 0.0f, 0.0f, 1.0f,
+        -1.0f, -1.0f, 0.0f, 0.0f, 0.0f,
+         1.0f, -1.0f, 0.0f, 1.0f, 0.0f,
+         1.0f,  1.0f, 0.0f, 1.0f, 1.0f
+    };
+
+    GLuint indices[] = {
+        0, 1, 2,
+        2, 3, 0
+    };
+
+    GLuint VAO, VBO, EBO;
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+    glGenBuffers(1, &EBO);
+    glBindVertexArray(VAO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+    // Vertex position attribute
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (GLvoid*)0);
+    glEnableVertexAttribArray(0);
+
+    // Texture coordinate attribute
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
+    glEnableVertexAttribArray(1);
+    glBindVertexArray(0);
+
+    // Create half-resolution framebuffer
+    GLuint framebuffer;
+    glGenFramebuffers(1, &framebuffer);
+    glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+
+    // Create half-resolution texture
+    GLuint halfResTexture;
+    glGenTextures(1, &halfResTexture);
+    glBindTexture(GL_TEXTURE_2D, halfResTexture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, WIDTH*resScale, HEIGHT*resScale, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+    // Attach texture to framebuffer
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, halfResTexture, 0);
+
+    // Unbind framebuffer
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    // Uniforms
+    GLint timeLocation = glGetUniformLocation(shader.Program, "time");
+    GLint widthLocation = glGetUniformLocation(shader.Program, "width");
+    GLint heightLocation = glGetUniformLocation(shader.Program, "height");
+    GLint passthroughTextureLocation = glGetUniformLocation(passthroughShader.Program, "u_texture");
+
+    float lastTime = static_cast<float>(glfwGetTime());
+    while (!glfwWindowShouldClose(window)) {
+        // Render to half-resolution framebuffer
+        glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+        glViewport(0, 0, WIDTH*resScale, HEIGHT*resScale);
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        shader.Use();
+        glUniform1f(timeLocation, demoTime);
+        glUniform1f(widthLocation, static_cast<float>(WIDTH*resScale));
+        glUniform1f(heightLocation, static_cast<float>(HEIGHT*resScale));
+        glBindVertexArray(VAO);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        glBindVertexArray(0);
+
+        // Render to screen framebuffer
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glViewport(0, 0, WIDTH, HEIGHT);
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        passthroughShader.Use();
+        glUniform1i(passthroughTextureLocation, 0);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, halfResTexture);
+        glBindVertexArray(VAO);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        glBindVertexArray(0);
+
+
+        float nowTime = static_cast<float>(glfwGetTime());
+        float deltaTime = nowTime - lastTime;
+        lastTime = nowTime;
+        int fps = static_cast<int>(1.0f / deltaTime);
+        int frameMs = static_cast<int>(deltaTime * 1000);
+
+        if(isPlaying) demoTime += deltaTime;
+
+        // Text drawing
+        gltBeginDraw();
+
+        gltColor(1.0f, 1.0f, 1.0f, 1.0f);
+
+        if(demoTime > 2.0f && demoTime < 5.0f)
+            gltDrawText2DAligned(textDemoName,
+                (GLfloat)(WIDTH*.5f),
+                (GLfloat)(HEIGHT*.5f),
+                5.0f,
+                GLT_CENTER, GLT_CENTER);
+
+        if(showStats){
+            sprintf(stats, "%.0fx%.0f // %d fps, %d ms // Demo Time: %.0fs", WIDTH*resScale, HEIGHT*resScale, fps, frameMs, demoTime);
+            gltSetText(textStats, stats);
+            gltDrawText2DAligned(textStats,
+                (GLfloat)(WIDTH*.5f),
+                24.0f,
+                2.0f,
+                GLT_CENTER, GLT_CENTER);
+        }
+
+
+        gltEndDraw();
+
+        // Swap buffers and poll events
+        glfwSwapBuffers(window);
+        glfwPollEvents();
+    }
+
+    // Clean up
+    gltDeleteText(textDemoName);
+    gltDeleteText(textStats);
+    gltTerminate();
+    glDeleteVertexArrays(1, &VAO);
+    glDeleteBuffers(1, &VBO);
+    glDeleteBuffers(1, &EBO);
+    glfwTerminate();
+
     return 0;
-  }
-
-  return shader;
 }
-
-// Linking shader program
-GLuint createShaderProgram(const std::string& vertexShaderSource, const std::string& fragmentShaderSource) {
-  GLuint vertexShader = createShader(GL_VERTEX_SHADER, vertexShaderSource);
-  GLuint fragmentShader = createShader(GL_FRAGMENT_SHADER, fragmentShaderSource);
-
-  GLuint shaderProgram = glCreateProgram();
-  glAttachShader(shaderProgram, vertexShader);
-  glAttachShader(shaderProgram, fragmentShader);
-  glLinkProgram(shaderProgram);
-
-  GLint success;
-  glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
-  if (!success) {
-    char infoLog[512];
-    glGetProgramInfoLog(shaderProgram, 512, nullptr, infoLog);
-    std::cerr << "Failed to link shader program: " << infoLog << std::endl;
-    glDeleteProgram(shaderProgram);
-    shaderProgram = 0;
-  }
-
-  glDeleteShader(vertexShader);
-  glDeleteShader(fragmentShader);
-
-  return shaderProgram;
-}
-
-// Render shader program
-void render(GLuint shaderProgram, GLuint VAO) {
-  glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-  glClear(GL_COLOR_BUFFER_BIT);
-
-  glUseProgram(shaderProgram);
-  glBindVertexArray(VAO);
-  glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-  glBindVertexArray(0);
-}
-
