@@ -104,7 +104,7 @@ int main(int argc, char* argv[]) {
 
     // Set OpenGL version and profile
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 
@@ -241,12 +241,14 @@ int main(int argc, char* argv[]) {
                 GLT_CENTER, GLT_CENTER);
 
         if(showStats){
-            sprintf(stats, "%.0fx%.0f // %d fps, %d ms // Demo Time: %.0fs", WIDTH*resScale, HEIGHT*resScale, fps, frameMs, demoTime);
+            char* paused="PLAYING...";
+            if(!isPlaying) paused="-- PAUSED --";
+            sprintf(stats, "%.0fx%.0f - %d fps, %d ms\nDemo Time %000.0fs %s", WIDTH*resScale, HEIGHT*resScale, fps, frameMs, demoTime, paused);
             gltSetText(textStats, stats);
             gltDrawText2DAligned(textStats,
                 (GLfloat)(WIDTH*.5f),
-                24.0f,
-                2.0f,
+                32.0f,
+                1.0f,
                 GLT_CENTER, GLT_CENTER);
         }
 
