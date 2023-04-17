@@ -1,7 +1,7 @@
 #include <cstdio>
 #include <iostream>
-#include "glew.h"
-#include "glfw3.h"
+#include <GL/glew.h>
+#include <GLFW/glfw3.h>
 #include "shader.h"
 #define GLT_IMPLEMENTATION
 #include "gltext.h" /* https://github.com/vallentin/glText */
