@@ -5,6 +5,8 @@
 #include "shader.h"
 #define GLT_IMPLEMENTATION
 #include "gltext.h" /* https://github.com/vallentin/glText */
+#define MINIAUDIO_IMPLEMENTATION
+#include "miniaudio.h" /* https://miniaud.io/index.html */
 
 int WIDTH = 1280, HEIGHT = 720;
 float resScale = .5f;
@@ -88,6 +90,10 @@ int main(int argc, char* argv[]) {
     }
 
     std::cout << "Initializing engine with window resolution " << WIDTH << "x" << HEIGHT << ", internal rendering resolution " << WIDTH*resScale << "x" << HEIGHT*resScale << " (scale " << resScale << ")."<< std::endl;
+
+    ma_engine engine;
+    ma_engine_init(NULL, &engine);
+    ma_engine_play_sound(&engine, "music.mp3", NULL);
 
     glfwInit();
 
@@ -260,6 +266,7 @@ int main(int argc, char* argv[]) {
     }
 
     // Clean up
+    ma_engine_uninit(&engine);
     gltDeleteText(textDemoName);
     gltDeleteText(textStats);
     gltTerminate();
