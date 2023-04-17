@@ -103,6 +103,15 @@ float map(float value, float inputMin, float inputMax, float outputMin, float ou
     return outputMin + ((clamp(value, inputMin, inputMax) - inputMin) / (inputMax - inputMin)) * (outputMax - outputMin);
 }
 
+
+vec2 solve( vec2 p, float r1, float r2 )
+{
+    float h = dot(p,p);
+    float w = h + r1*r1 - r2*r2;
+    float s = max(4.0*r1*r1*h - w*w,0.0);
+    return (w*p + vec2(-p.y,p.x)*sqrt(s)) * 0.5/h;
+}
+
 /*
  * FAKE RANDOM GENERATOR
  *
@@ -282,6 +291,13 @@ vec2 sdfWorld(in vec3 pos){
 
     float p1x_=opUnion(p_,opUnion(i_,x_));
     if (p1x_<WORLD_RES) m=MAT_DARKBLUE;
+
+
+
+    // robot hands
+    // const float l1 = 0.8;        // length of first segment
+// 	const float l2 = 0.4;        // length of second segment
+    //solve(pos,l1m,l2);
 
     float world=opUnion(ground,opUnion(city_,p1x_));
 

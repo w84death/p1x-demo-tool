@@ -19,7 +19,7 @@ char demoName[32] = "P1X DEMO TOOL V2";
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
-        std::cout << "Bye!\n\n(c)2023.04 Krzysztof Krystian Jankowski ^  P1X" << std::endl;
+        std::cout << "Bye!\n\n(c)2023.04 w84death / P1X" << std::endl;
         glfwSetWindowShouldClose(window, GL_TRUE);
     }
 
