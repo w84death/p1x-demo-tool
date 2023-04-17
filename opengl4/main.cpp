@@ -1,16 +1,20 @@
+#include <cstdio>
 #include <iostream>
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include "shader.h"
+#define GLT_IMPLEMENTATION
+#include "gltext.h" /* https://github.com/vallentin/glText */
 
 int WIDTH = 1280, HEIGHT = 720;
-float resScale = .25;
-float demoTime = 0.0;
-const float demoLength = 60.0;
+float resScale = .25f;
+float demoTime = 0.0f;
+const float demoLength = 60.0f;
 bool isPlaying = true;
 bool fullscreen = false;
 float lastConsoleOut = -0.1f;
+char stats[512];
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
@@ -105,6 +109,14 @@ int main(int argc, char* argv[]) {
     // Set viewport
     glViewport(0, 0, WIDTH, HEIGHT);
 
+    // Initialize glText
+    gltInit();
+
+    // Creating text
+    GLTtext *textDemoName = gltCreateText();
+    GLTtext *textStats = gltCreateText();
+    gltSetText(textDemoName, "P1X DEMO TOOL V2");
+
     // Load shaders
     Shader shader("vertex_shader.glsl","fragment_shader.glsl");
     Shader passthroughShader("pass_vertex_shader.glsl", "pass_fragment_shader.glsl");
@@ -196,9 +208,6 @@ int main(int argc, char* argv[]) {
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
 
-        // Swap buffers and poll events
-        glfwSwapBuffers(window);
-        glfwPollEvents();
 
         float nowTime = static_cast<float>(glfwGetTime());
         float deltaTime = nowTime - lastTime;
@@ -208,13 +217,38 @@ int main(int argc, char* argv[]) {
 
         if(isPlaying) demoTime += deltaTime;
 
-        if (fabs(demoTime - lastConsoleOut) >= 0.1) {
-            lastConsoleOut = demoTime;
-            std::cout << "[" << WIDTH*resScale << "x" << HEIGHT*resScale << "] => [ "<< WIDTH <<"x"<< HEIGHT << " ] " << fps << " fps, " << frameMs << " ms" << ", DEMO TIME: " << demoTime << "s" << std::endl;
-        }
+        // Text drawing
+        sprintf(stats, "%.0fx%.0f // %d fps, %d ms // Demo Time: %.0fs", WIDTH*resScale, HEIGHT*resScale, fps, frameMs, demoTime);
+        gltSetText(textStats, stats);
+
+        gltBeginDraw();
+
+        gltColor(1.0f, 1.0f, 1.0f, 1.0f);
+
+        if(demoTime > 2.0f && demoTime < 5.0f)
+        gltDrawText2DAligned(textDemoName,
+            (GLfloat)(WIDTH*.5f),
+            (GLfloat)(HEIGHT*.5f),
+            3.0f/(resScale*4.0f),
+            GLT_CENTER, GLT_CENTER);
+
+        gltDrawText2DAligned(textStats,
+            (GLfloat)(WIDTH*.5f),
+            12.0f,
+            1.0f/(resScale*4.0f),
+            GLT_CENTER, GLT_CENTER);
+
+        gltEndDraw();
+
+        // Swap buffers and poll events
+        glfwSwapBuffers(window);
+        glfwPollEvents();
     }
 
     // Clean up
+    gltDeleteText(textDemoName);
+    gltDeleteText(textStats);
+    gltTerminate();
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
     glDeleteBuffers(1, &EBO);
