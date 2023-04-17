@@ -14,10 +14,19 @@
 #define MA_NO_WAV
 #define MA_DEBUG_OUTPUT
 #define MA_NO_AAUDIO
+#define MA_NO_ALSA
+#define MA_NO_JACK
+#define MA_NO_AUDIO4
+#define MA_NO_OSS
 #define MA_NO_SNDIO
 #define MA_NO_COREAUDIO
 #define MA_NO_WINMM
-#include "miniaudio.h" /* https://miniaud.io/index.html */
+#define MA_NO_RESOURCE_MANAGER
+#define MA_NO_OPENSL
+#define MA_NO_NODE_GRAPH
+#define MA_NO_ENGINE
+#define MA_NO_ENCODING
+#include "miniaudio.h" /* https://miniaud.io/ */
 
 int WIDTH = 1280, HEIGHT = 720;
 float resScale = .5f;
@@ -76,7 +85,17 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
         }
     }
 }
+void data_callback(ma_device* pDevice, void* pOutput, const void* pInput, ma_uint32 frameCount)
+{
+    ma_decoder* pDecoder = (ma_decoder*)pDevice->pUserData;
+    if (pDecoder == NULL) {
+        return;
+    }
 
+    ma_decoder_read_pcm_frames(pDecoder, pOutput, frameCount, NULL);
+
+    (void)pInput;
+}
 void _init(void){};
 int main(int argc, char* argv[]) {
     std::cout << "Welcome to the -=[" << demoName << "]=- demo expeience.\n"<< std::endl;
@@ -102,9 +121,20 @@ int main(int argc, char* argv[]) {
 
     std::cout << "Initializing engine with window resolution " << WIDTH << "x" << HEIGHT << ", internal rendering resolution " << WIDTH*resScale << "x" << HEIGHT*resScale << " (scale " << resScale << ")."<< std::endl;
 
-    ma_engine engine;
-    ma_engine_init(NULL, &engine);
-    ma_engine_play_sound(&engine, "music.mp3", NULL);
+    ma_result result;
+    ma_decoder decoder;
+    ma_device_config deviceConfig;
+    ma_device device;
+    result = ma_decoder_init_file("music.mp3", NULL, &decoder);
+    deviceConfig = ma_device_config_init(ma_device_type_playback);
+    deviceConfig.playback.format   = decoder.outputFormat;
+    deviceConfig.playback.channels = decoder.outputChannels;
+    deviceConfig.sampleRate        = decoder.outputSampleRate;
+    deviceConfig.dataCallback      = data_callback;
+    deviceConfig.pUserData         = &decoder;
+    ma_device_init(NULL, &deviceConfig, &device);
+    ma_device_start(&device);
+
 
     glfwInit();
 
@@ -277,7 +307,8 @@ int main(int argc, char* argv[]) {
     }
 
     // Clean up
-    ma_engine_uninit(&engine);
+    ma_device_uninit(&device);
+    ma_decoder_uninit(&decoder);
     gltDeleteText(textDemoName);
     gltDeleteText(textStats);
     gltTerminate();
