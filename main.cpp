@@ -6,7 +6,6 @@
 #define GLT_IMPLEMENTATION
 #include "gltext.h" /* https://github.com/vallentin/glText */
 #define MINIAUDIO_IMPLEMENTATION
-
 #define MA_NO_FLAC
 #define MA_NO_DSOUND
 #define MA_NO_WEBAUDIO
