@@ -14,7 +14,7 @@
 #define MA_NO_WAV
 #define MA_DEBUG_OUTPUT
 #define MA_NO_AAUDIO
-#define MA_NO_ALSA
+#define MA_NO_PULSEAUDIO
 #define MA_NO_JACK
 #define MA_NO_AUDIO4
 #define MA_NO_OSS
@@ -26,6 +26,7 @@
 #define MA_NO_NODE_GRAPH
 #define MA_NO_ENGINE
 #define MA_NO_ENCODING
+#define MA_NO_DEBUG
 #include "miniaudio.h" /* https://miniaud.io/ */
 
 int WIDTH = 1280, HEIGHT = 720;
