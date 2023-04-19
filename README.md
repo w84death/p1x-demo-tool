@@ -2,7 +2,7 @@
 
 OpenGL 4 tool written in C++ designed to render a fullscreen single GLSL demo. Targetting 64K.
 
-![Demo Screenshot](screen2.jpg)
+![Demo Screenshot](media/screen2.jpg)
 
 Technical Details:
 
@@ -19,7 +19,7 @@ Technical Details:
 
 
 ## Usage
-```./run-demo.sh```
+```./demo```
 
 For slower computers try:
 ```./demoLinux --width 640 --height 360 --resolution-scale 0.25 --stats```
@@ -28,7 +28,7 @@ For statistics use ```--stats```, for fullscreen use ```--fullscreen```.
 
 ## Compiling and development
 
-![Development Screenshot](screen1.jpg)
+![Development Screenshot](media/screen1.jpg)
 
 Ubuntu
 ```apt install libglew-dev libglfw3-dev upx```
@@ -38,6 +38,3 @@ Arch Linux (Steam Deck)
 
 ### Compile and compress binary
 ```./compile.sh```
-
-### Develop
-Run ```./development.sh``` and edit fragment_shader.glsl. Each time you save the file it will restart demo.
