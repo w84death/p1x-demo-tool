@@ -530,7 +530,12 @@ void main() {
     vec3 col = render(barrelDistortion(TexCoords)*TexCoords);
 
     float filmNoise = rnd(TexCoords+vec2(time));
+
     col -= col*vec3(filmNoise)*.2;
+
+     // Vignette.
+	col *= 1.0 - 0.2 * dot(TexCoords, TexCoords);
+
 
     // color/exposure correction;
     col = pow (col, vec3(0.4545));
