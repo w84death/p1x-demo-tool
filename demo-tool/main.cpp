@@ -255,9 +255,7 @@ int main(int argc, char* argv[]) {
                 GLT_CENTER, GLT_CENTER);
 
         if(showStats){
-            char* paused="PLAYING...";
-            if(!isPlaying) paused="-- PAUSED --";
-            sprintf(stats, "%.0fx%.0f - %d fps, %d ms\nDemo Time %000.0fs %s", WIDTH*resScale, HEIGHT*resScale, fps, frameMs, demoTime, paused);
+            sprintf(stats, "%.0fx%.0f - %d fps, %d ms\nDemo Time %000.0fs", WIDTH*resScale, HEIGHT*resScale, fps, frameMs, demoTime);
             gltSetText(textStats, stats);
             gltDrawText2DAligned(textStats,
                 (GLfloat)(WIDTH*.5f),
