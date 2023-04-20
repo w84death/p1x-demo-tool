@@ -1,7 +1,11 @@
 #include <cstdio>
 #include <iostream>
+#include <ctime>
+#include <X11/Xlib.h>
+#include <X11/Xutil.h>
 #include <GL/glew.h>
-#include <GLFW/glfw3.h>
+#include <GL/gl.h>
+#include <GL/glx.h>
 #include "shader.h"
 #define GLT_IMPLEMENTATION
 #include "gltext.h" /* https://github.com/vallentin/glText */
@@ -18,7 +22,7 @@ bool showStats = false;
 char stats[512];
 char demoName[32] = "P1X DEMO TOOL V2";
 MODULE *module;
-
+/*
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
         std::cout << "Bye!\n\n(c)2023.04 w84death / P1X" << std::endl;
@@ -66,7 +70,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
             // Handle down arrow press without Shift
         }
     }
-}
+}*/
 void _init(void){};
 int main(int argc, char* argv[]) {
 
@@ -101,28 +105,38 @@ int main(int argc, char* argv[]) {
     MikMod_Init("");
     module = Player_Load("music.xm", 64, 0);
 
-    glfwInit();
+    // Init Xwindow
+        Display *display = XOpenDisplay(NULL);
+    int screen = DefaultScreen(display);
+    Window root = RootWindow(display, screen);
+    int visual_attribs[] = {
+        GLX_RGBA,
+        GLX_DEPTH_SIZE, 24,
+        GLX_DOUBLEBUFFER,
+        None
+    };
+    XVisualInfo *visual_info = glXChooseVisual(display, screen, visual_attribs);
+    Colormap colormap = XCreateColormap(display, root, visual_info->visual, AllocNone);
+    XSetWindowAttributes window_attribs;
+    window_attribs.colormap = colormap;
+    window_attribs.event_mask = ExposureMask | KeyPressMask;
+    Window window = XCreateWindow(
+        display,
+        root,
+        0, 0, WIDTH, HEIGHT,
+        0,
+        visual_info->depth,
+        InputOutput,
+        visual_info->visual,
+        CWColormap | CWEventMask,
+        &window_attribs
+    );
+    XStoreName(display, window, demoName);
 
-    GLFWmonitor* monitor = nullptr;
-    const GLFWvidmode* videoMode = nullptr;
+    GLXContext context = glXCreateContext(display, visual_info, NULL, GL_TRUE);
+    glXMakeCurrent(display, window, context);
+    XMapWindow(display, window);
 
-    if (fullscreen) {
-        monitor = glfwGetPrimaryMonitor();
-        videoMode = glfwGetVideoMode(monitor);
-        WIDTH = videoMode->width;
-        HEIGHT = videoMode->height;
-    }
-
-    // Set OpenGL version and profile
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
-
-    // Create a GLFW window
-    GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, demoName, nullptr, nullptr);
-    glfwMakeContextCurrent(window);
-    glfwSetKeyCallback(window, key_callback);
 
     // Initialize GLEW
     glewExperimental = GL_TRUE;
@@ -202,10 +216,10 @@ int main(int argc, char* argv[]) {
     GLint heightLocation = glGetUniformLocation(shader.Program, "height");
     GLint passthroughTextureLocation = glGetUniformLocation(passthroughShader.Program, "u_texture");
 
-    float lastTime = static_cast<float>(glfwGetTime());
+    float lastTime = (float)std::time(0);
     Player_Start(module);
 
-    while (!glfwWindowShouldClose(window)) {
+    while (true) {
         MikMod_Update();
 
         // Render to half-resolution framebuffer
@@ -235,13 +249,13 @@ int main(int argc, char* argv[]) {
         glBindVertexArray(0);
 
 
-        float nowTime = static_cast<float>(glfwGetTime());
+        float nowTime = (float)std::time(0);
         float deltaTime = nowTime - lastTime;
         lastTime = nowTime;
         int fps = static_cast<int>(1.0f / deltaTime);
         int frameMs = static_cast<int>(deltaTime * 1000);
 
-        if(isPlaying) demoTime += deltaTime;
+        if(isPlaying) demoTime += .0333;
 
         // Text drawing
         gltBeginDraw();
@@ -265,12 +279,8 @@ int main(int argc, char* argv[]) {
                 GLT_CENTER, GLT_CENTER);
         }
 
-
         gltEndDraw();
-
-        // Swap buffers and poll events
-        glfwSwapBuffers(window);
-        glfwPollEvents();
+        glXSwapBuffers(display, window);
     }
 
     // Clean up
@@ -283,7 +293,11 @@ int main(int argc, char* argv[]) {
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
     glDeleteBuffers(1, &EBO);
-    glfwTerminate();
+    glXMakeCurrent(display, None, NULL);
+    glXDestroyContext(display, context);
+    XFree(visual_info);
+    XDestroyWindow(display, window);
+    XCloseDisplay(display);
 
     return 0;
 }
