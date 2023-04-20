@@ -1,5 +1,6 @@
 #include <cstdio>
 #include <iostream>
+#include <string>
 #include <ctime>
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
@@ -7,16 +8,28 @@
 #include <GL/gl.h>
 #include <GL/glx.h>
 #include <mikmod.h>
-#include "shader.h"
 #define GLT_IMPLEMENTATION
 #include "gltext.h" /* https://github.com/vallentin/glText */
 
+const std::string fragmentSource =
+#include "glsl/fragment_shader.glsl"
+;
+const std::string vertexSource =
+#include "glsl/vertex_shader.glsl"
+;
+const std::string passFragmentSource =
+#include "glsl/pass_fragment_shader.glsl"
+;
+const std::string passVertexSource =
+#include "glsl/pass_vertex_shader.glsl"
+;
 
 int WIDTH = 1280, HEIGHT = 720;
 float resScale = .5f;
 float demoTime = 0.0f;
 const float demoLength = 60.0f;
 bool isPlaying = true;
+bool isRunning = true;
 bool fullscreen = false;
 float lastConsoleOut = -0.1f;
 bool showStats = false;
@@ -25,55 +38,6 @@ char demoName[32] = "SHADER C1TY.";
 XEvent event;
 MODULE *module;
 
-/*
-void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
-    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
-        std::cout << "Bye!\n\n(c)2023.04 w84death / P1X" << std::endl;
-        glfwSetWindowShouldClose(window, GL_TRUE);
-    }
-
-    if (key == GLFW_KEY_SPACE && action == GLFW_PRESS) {
-        Player_TogglePause();
-        isPlaying = !isPlaying;
-
-    }
-
-    if (key == GLFW_KEY_LEFT) {
-        if (mods & GLFW_MOD_SHIFT) {
-            if(demoTime>0.1) demoTime -= 0.1;
-            else demoTime=0.0;
-        } else {
-            if(demoTime>1.0) demoTime -= 1.0;
-            else demoTime=0.0;
-        }
-    }
-
-    if (key == GLFW_KEY_RIGHT) {
-        if (mods & GLFW_MOD_SHIFT) {
-            if(demoTime<demoLength-0.1) demoTime += 0.1;
-            else demoTime=demoLength;
-        } else {
-            if(demoTime<demoLength-1.0) demoTime += 1.0;
-            else demoTime=demoLength;
-        }
-    }
-
-    if (key == GLFW_KEY_UP && action == GLFW_PRESS) {
-        if (mods & GLFW_MOD_SHIFT) {
-            // Handle up arrow press with Shift
-        } else {
-            // Handle up arrow press without Shift
-        }
-    }
-
-    if (key == GLFW_KEY_DOWN && action == GLFW_PRESS) {
-        if (mods & GLFW_MOD_SHIFT) {
-            // Handle down arrow press with Shift
-        } else {
-            // Handle down arrow press without Shift
-        }
-    }
-}*/
 void _init(void){};
 int main(int argc, char* argv[]) {
 
@@ -158,9 +122,39 @@ int main(int argc, char* argv[]) {
     gltSetText(textDemoName, demoName);
 
     // Load shaders
-    Shader shader("vertex_shader.glsl","fragment_shader.glsl");
-    Shader passthroughShader("pass_vertex_shader.glsl", "pass_fragment_shader.glsl");
+    GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
+    const GLchar *source = (const GLchar *)vertexSource.c_str();
+    glShaderSource(vertexShader, 1, &source, 0);
+    glCompileShader(vertexShader);
 
+    GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+    source = (const GLchar *)fragmentSource.c_str();
+    glShaderSource(fragmentShader, 1, &source, 0);
+    glCompileShader(fragmentShader);
+
+    GLuint shaderProgram = glCreateProgram();
+    glAttachShader(shaderProgram, vertexShader);
+    glAttachShader(shaderProgram, fragmentShader);
+    glLinkProgram(shaderProgram);
+    glDetachShader(shaderProgram, vertexShader);
+    glDetachShader(shaderProgram, fragmentShader);
+
+    GLuint vertexPassShader = glCreateShader(GL_VERTEX_SHADER);
+    source = (const GLchar *)passVertexSource.c_str();
+    glShaderSource(vertexPassShader, 1, &source, 0);
+    glCompileShader(vertexPassShader);
+
+    GLuint fragmentPassShader = glCreateShader(GL_FRAGMENT_SHADER);
+    source = (const GLchar *)passFragmentSource.c_str();
+    glShaderSource(fragmentPassShader, 1, &source, 0);
+    glCompileShader(fragmentPassShader);
+
+    GLuint shaderPassProgram = glCreateProgram();
+    glAttachShader(shaderPassProgram, vertexPassShader);
+    glAttachShader(shaderPassProgram, fragmentPassShader);
+    glLinkProgram(shaderPassProgram);
+    glDetachShader(shaderPassProgram, vertexPassShader);
+    glDetachShader(shaderPassProgram, fragmentPassShader);
 
     // Define vertices for the plane
     GLfloat vertices[] = {
@@ -215,15 +209,15 @@ int main(int argc, char* argv[]) {
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     // Uniforms
-    GLint timeLocation = glGetUniformLocation(shader.Program, "time");
-    GLint widthLocation = glGetUniformLocation(shader.Program, "width");
-    GLint heightLocation = glGetUniformLocation(shader.Program, "height");
-    GLint passthroughTextureLocation = glGetUniformLocation(passthroughShader.Program, "u_texture");
+    GLint timeLocation = glGetUniformLocation(shaderProgram, "time");
+    GLint widthLocation = glGetUniformLocation(shaderProgram, "width");
+    GLint heightLocation = glGetUniformLocation(shaderProgram, "height");
+    GLint passthroughTextureLocation = glGetUniformLocation(shaderPassProgram, "u_texture");
 
     float lastTime = (float)std::time(0);
     Player_Start(module);
 
-    while (true) {
+    while (isRunning) {
         MikMod_Update();
 
         // Render to half-resolution framebuffer
@@ -231,7 +225,7 @@ int main(int argc, char* argv[]) {
         glViewport(0, 0, WIDTH*resScale, HEIGHT*resScale);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        shader.Use();
+        glUseProgram(shaderProgram);
         glUniform1f(timeLocation, demoTime);
         glUniform1f(widthLocation, static_cast<float>(WIDTH*resScale));
         glUniform1f(heightLocation, static_cast<float>(HEIGHT*resScale));
@@ -244,7 +238,7 @@ int main(int argc, char* argv[]) {
         glViewport(0, 0, WIDTH, HEIGHT);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        passthroughShader.Use();
+        glUseProgram(shaderPassProgram);
         glUniform1i(passthroughTextureLocation, 0);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, halfResTexture);
@@ -287,6 +281,23 @@ int main(int argc, char* argv[]) {
         glXSwapBuffers(display, window);
         while (XPending(display)) {
             XNextEvent(display, &event);
+            if (event.type == KeyPress) {
+                KeySym key = XLookupKeysym(&event.xkey, 0);
+                if (key == XK_space) {
+                    Player_TogglePause();
+                    isPlaying = !isPlaying;
+                }else
+                if (key == XK_Up || key == XK_Down || key == XK_Left || key == XK_Right) {
+                    // Arrow key was pressed
+
+                    if (event.xkey.state & ShiftMask) {
+                        // Arrow + Shift key was pressed
+
+
+                    }
+                }else
+                    isRunning = false;
+            }
         }
     }
 

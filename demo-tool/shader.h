@@ -1,33 +1,15 @@
 #define SHADER_H
 
 #include <string>
-#include <fstream>
-#include <sstream>
-#include <iostream>
 #include <GL/glew.h>
 
 class Shader {
 public:
     GLuint Program;
 
-    Shader(const GLchar* vertexPath, const GLchar* fragmentPath) {
-        std::string vertexCode, fragmentCode;
-        std::ifstream vShaderFile, fShaderFile;
-        vShaderFile.open(vertexPath);
-        fShaderFile.open(fragmentPath);
-
-        std::stringstream vShaderStream, fShaderStream;
-        vShaderStream << vShaderFile.rdbuf();
-        fShaderStream << fShaderFile.rdbuf();
-
-        vShaderFile.close();
-        fShaderFile.close();
-
-        vertexCode = vShaderStream.str();
-        fragmentCode = fShaderStream.str();
-
-        const GLchar* vShaderCode = vertexCode.c_str();
-        const GLchar* fShaderCode = fragmentCode.c_str();
+    Shader(const GLchar* vertexCode, const GLchar* fragmentCode) {
+        const GLchar* vShaderCode = vertexCode;
+        const GLchar* fShaderCode = fragmentCode;
 
         GLuint vertex, fragment;
         GLint success;
