@@ -6,10 +6,11 @@
 #include <GL/glew.h>
 #include <GL/gl.h>
 #include <GL/glx.h>
+#include <mikmod.h>
 #include "shader.h"
 #define GLT_IMPLEMENTATION
 #include "gltext.h" /* https://github.com/vallentin/glText */
-#include <mikmod.h>
+
 
 int WIDTH = 1280, HEIGHT = 720;
 float resScale = .5f;
