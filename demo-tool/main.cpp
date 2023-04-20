@@ -96,9 +96,10 @@ int main(int argc, char* argv[]) {
 
     // Mod music
     MikMod_RegisterAllDrivers();
-    MikMod_RegisterLoader(&load_mod);
+    // MikMod_RegisterLoader(&load_mod);
+    MikMod_RegisterLoader(&load_xm);
     MikMod_Init("");
-    module = Player_Load("music.mod", 64, 0);
+    module = Player_Load("music.xm", 64, 0);
 
     glfwInit();
 
