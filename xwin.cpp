@@ -2,38 +2,26 @@
 #include <X11/Xutil.h>
 #include <GL/gl.h>
 #include <GL/glx.h>
-
 #include <iostream>
 
-int main() {
-    Display *display = XOpenDisplay(NULL);
-    if (!display) {
-        std::cerr << "Error: Could not open display." << std::endl;
-        return 1;
-    }
+// g++ main.cpp -o demo -std=c++11 -lX11 -lGLEW -lGL -lmikmod && upx --best demo && echo "Done; Run ./demo --stats"
 
+int main() {
+
+    Display *display = XOpenDisplay(NULL);
     int screen = DefaultScreen(display);
     Window root = RootWindow(display, screen);
-
     int visual_attribs[] = {
         GLX_RGBA,
         GLX_DEPTH_SIZE, 24,
         GLX_DOUBLEBUFFER,
         None
     };
-
     XVisualInfo *visual_info = glXChooseVisual(display, screen, visual_attribs);
-    if (!visual_info) {
-        std::cerr << "Error: Could not choose visual." << std::endl;
-        return 1;
-    }
-
     Colormap colormap = XCreateColormap(display, root, visual_info->visual, AllocNone);
-
     XSetWindowAttributes window_attribs;
     window_attribs.colormap = colormap;
     window_attribs.event_mask = ExposureMask | KeyPressMask;
-
     Window window = XCreateWindow(
         display,
         root,
@@ -45,20 +33,12 @@ int main() {
         CWColormap | CWEventMask,
         &window_attribs
     );
-
-    XFree(visual_info);
-
     XStoreName(display, window, "OpenGL X11 Window");
 
     GLXContext context = glXCreateContext(display, visual_info, NULL, GL_TRUE);
-    if (!context) {
-        std::cerr << "Error: Could not create OpenGL context." << std::endl;
-        return 1;
-    }
-
     glXMakeCurrent(display, window, context);
-
     XMapWindow(display, window);
+
 
     while (true) {
         XEvent event;
@@ -75,6 +55,7 @@ int main() {
 
     glXMakeCurrent(display, None, NULL);
     glXDestroyContext(display, context);
+    XFree(visual_info);
     XDestroyWindow(display, window);
     XCloseDisplay(display);
 
