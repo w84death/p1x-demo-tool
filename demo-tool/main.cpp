@@ -21,8 +21,10 @@ bool fullscreen = false;
 float lastConsoleOut = -0.1f;
 bool showStats = false;
 char stats[512];
-char demoName[32] = "P1X DEMO TOOL V2";
+char demoName[32] = "SHADER C1TY.";
+XEvent event;
 MODULE *module;
+
 /*
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
@@ -75,8 +77,9 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 void _init(void){};
 int main(int argc, char* argv[]) {
 
-
+    // Welcome
     std::cout << "Welcome to the -=[" << demoName << "]=- demo expeience.\n"<< std::endl;
+    std::cout << "DEVELOPMENT VERSION. BUGS ARE EXPECTED. CTRL+C TO KILL THE DEMO.\n"<< std::endl;
 
     for (int i = 1; i < argc; i++) {
         std::string arg = argv[i];
@@ -92,12 +95,12 @@ int main(int argc, char* argv[]) {
         }else if (arg == "--fullscreen") {
             fullscreen = true;
         }else {
-            std::cout << "Wrong pargument: " << arg << "\n\nUsage:\n$ ./demo --width 640 --height 360 --resolution-scale 0.25\n\nFor statistics use --stats, for fullscreen use --fullscreen." << std::endl;
+            std::cout << "> Wrong pargument: " << arg << "\n\n> Usage:\n$ ./demo --width 640 --height 360 --resolution-scale 0.25\n\nFor statistics use --stats, for fullscreen use --fullscreen.\n" << std::endl;
             return 0;
        }
     }
 
-    std::cout << "Initializing engine with window resolution " << WIDTH << "x" << HEIGHT << ", internal rendering resolution " << WIDTH*resScale << "x" << HEIGHT*resScale << " (scale " << resScale << ")."<< std::endl;
+    std::cout << "> Initializing engine with window resolution " << WIDTH << "x" << HEIGHT << ", internal rendering resolution " << WIDTH*resScale << "x" << HEIGHT*resScale << " (scale " << resScale << ")."<< std::endl;
 
     // Mod music
     MikMod_RegisterAllDrivers();
@@ -282,6 +285,9 @@ int main(int argc, char* argv[]) {
 
         gltEndDraw();
         glXSwapBuffers(display, window);
+        while (XPending(display)) {
+            XNextEvent(display, &event);
+        }
     }
 
     // Clean up
