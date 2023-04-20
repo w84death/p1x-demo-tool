@@ -1,3 +1,9 @@
+/*
+ * P1X DEMO TOOL V2
+ * by w84death^P1X
+ * (c)2023.04
+ * */
+
 #include <cstdio>
 #include <iostream>
 #include <string>
@@ -38,7 +44,9 @@ char demoName[32] = "SHADER C1TY.";
 XEvent event;
 MODULE *module;
 
+GLuint createShaderProgram(std::string vertexSource, std::string fragmentSource);
 void _init(void){};
+
 int main(int argc, char* argv[]) {
 
     // Welcome
@@ -121,40 +129,12 @@ int main(int argc, char* argv[]) {
     GLTtext *textStats = gltCreateText();
     gltSetText(textDemoName, demoName);
 
-    // Load shaders
-    GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    const GLchar *source = (const GLchar *)vertexSource.c_str();
-    glShaderSource(vertexShader, 1, &source, 0);
-    glCompileShader(vertexShader);
+    // Main shader
+    // GLuint shaderProgram = compileShader(fragmentSource,vertexSource);
 
-    GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    source = (const GLchar *)fragmentSource.c_str();
-    glShaderSource(fragmentShader, 1, &source, 0);
-    glCompileShader(fragmentShader);
-
-    GLuint shaderProgram = glCreateProgram();
-    glAttachShader(shaderProgram, vertexShader);
-    glAttachShader(shaderProgram, fragmentShader);
-    glLinkProgram(shaderProgram);
-    glDetachShader(shaderProgram, vertexShader);
-    glDetachShader(shaderProgram, fragmentShader);
-
-    GLuint vertexPassShader = glCreateShader(GL_VERTEX_SHADER);
-    source = (const GLchar *)passVertexSource.c_str();
-    glShaderSource(vertexPassShader, 1, &source, 0);
-    glCompileShader(vertexPassShader);
-
-    GLuint fragmentPassShader = glCreateShader(GL_FRAGMENT_SHADER);
-    source = (const GLchar *)passFragmentSource.c_str();
-    glShaderSource(fragmentPassShader, 1, &source, 0);
-    glCompileShader(fragmentPassShader);
-
-    GLuint shaderPassProgram = glCreateProgram();
-    glAttachShader(shaderPassProgram, vertexPassShader);
-    glAttachShader(shaderPassProgram, fragmentPassShader);
-    glLinkProgram(shaderPassProgram);
-    glDetachShader(shaderPassProgram, vertexPassShader);
-    glDetachShader(shaderPassProgram, fragmentPassShader);
+    // Compile shaders
+    GLuint shaderProgram = createShaderProgram(vertexSource, fragmentSource);
+    GLuint shaderPassProgram = createShaderProgram(passVertexSource, passFragmentSource);
 
     // Define vertices for the plane
     GLfloat vertices[] = {
@@ -319,3 +299,24 @@ int main(int argc, char* argv[]) {
 
     return 0;
 }
+
+GLuint createShaderProgram(std::string vertexSource, std::string fragmentSource){
+    GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
+    const GLchar *source = (const GLchar *)vertexSource.c_str();
+    glShaderSource(vertexShader, 1, &source, 0);
+    glCompileShader(vertexShader);
+
+    GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+    source = (const GLchar *)fragmentSource.c_str();
+    glShaderSource(fragmentShader, 1, &source, 0);
+    glCompileShader(fragmentShader);
+
+    GLuint shaderProgram = glCreateProgram();
+    glAttachShader(shaderProgram, vertexShader);
+    glAttachShader(shaderProgram, fragmentShader);
+    glLinkProgram(shaderProgram);
+    glDetachShader(shaderProgram, vertexShader);
+    glDetachShader(shaderProgram, fragmentShader);
+
+    return shaderProgram;
+};
