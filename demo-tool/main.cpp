@@ -13,6 +13,7 @@
 #include <GL/glew.h>
 #include <GL/gl.h>
 #include <GL/glx.h>
+#include <thread>
 #include <mikmod.h>
 #define GLT_IMPLEMENTATION
 #include "gltext.h" /* https://github.com/vallentin/glText */
@@ -43,6 +44,9 @@ char stats[512];
 char demoName[32] = "SHADER C1TY.";
 XEvent event;
 MODULE *module;
+bool isPlaying = true;
+bool isRunning = true;
+
 
 GLuint createShaderProgram(std::string vertexSource, std::string fragmentSource);
 void _init(void){};
@@ -194,8 +198,11 @@ int main(int argc, char* argv[]) {
     GLint heightLocation = glGetUniformLocation(shaderProgram, "height");
     GLint passthroughTextureLocation = glGetUniformLocation(shaderPassProgram, "u_texture");
 
-
+void playMusic() {
     Player_Start(module);
+    isPlaying = false;
+}
+    std::thread musicThread(playMusic);
 
     std::chrono::time_point<std::chrono::high_resolution_clock> start_time = std::chrono::high_resolution_clock::now();
     std::chrono::time_point<std::chrono::high_resolution_clock> previous_time = start_time;
@@ -259,6 +266,11 @@ int main(int argc, char* argv[]) {
 
         gltEndDraw();
 
+        if (!isPlaying) {
+        musicThread.join();
+        break;
+    }
+
         glXSwapBuffers(display, window);
         while (XPending(display)) {
             XNextEvent(display, &event);
@@ -273,7 +285,6 @@ int main(int argc, char* argv[]) {
 
                     if (event.xkey.state & ShiftMask) {
                         // Arrow + Shift key was pressed
-
 
                     }
                 }else
