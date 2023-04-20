@@ -5,29 +5,7 @@
 #include "shader.h"
 #define GLT_IMPLEMENTATION
 #include "gltext.h" /* https://github.com/vallentin/glText */
-#define MINIAUDIO_IMPLEMENTATION
-#define MA_NO_FLAC
-#define MA_NO_DSOUND
-#define MA_NO_WEBAUDIO
-#define MA_NO_WASAPI
-#define MA_NO_OPENSL
-#define MA_NO_WAV
-#define MA_DEBUG_OUTPUT
-#define MA_NO_AAUDIO
-#define MA_NO_PULSEAUDIO
-#define MA_NO_JACK
-#define MA_NO_AUDIO4
-#define MA_NO_OSS
-#define MA_NO_SNDIO
-#define MA_NO_COREAUDIO
-#define MA_NO_WINMM
-#define MA_NO_RESOURCE_MANAGER
-#define MA_NO_OPENSL
-#define MA_NO_NODE_GRAPH
-#define MA_NO_ENGINE
-#define MA_NO_ENCODING
-#define MA_NO_DEBUG
-#include "miniaudio.h" /* https://miniaud.io/ */
+#include <mikmod.h>
 
 int WIDTH = 1280, HEIGHT = 720;
 float resScale = .5f;
@@ -39,6 +17,7 @@ float lastConsoleOut = -0.1f;
 bool showStats = false;
 char stats[512];
 char demoName[32] = "P1X DEMO TOOL V2";
+MODULE *module;
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
@@ -47,7 +26,9 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     }
 
     if (key == GLFW_KEY_SPACE && action == GLFW_PRESS) {
+        Player_TogglePause();
         isPlaying = !isPlaying;
+
     }
 
     if (key == GLFW_KEY_LEFT) {
@@ -86,19 +67,10 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
         }
     }
 }
-void data_callback(ma_device* pDevice, void* pOutput, const void* pInput, ma_uint32 frameCount)
-{
-    ma_decoder* pDecoder = (ma_decoder*)pDevice->pUserData;
-    if (pDecoder == NULL) {
-        return;
-    }
-
-    ma_decoder_read_pcm_frames(pDecoder, pOutput, frameCount, NULL);
-
-    (void)pInput;
-}
 void _init(void){};
 int main(int argc, char* argv[]) {
+
+
     std::cout << "Welcome to the -=[" << demoName << "]=- demo expeience.\n"<< std::endl;
 
     for (int i = 1; i < argc; i++) {
@@ -122,20 +94,11 @@ int main(int argc, char* argv[]) {
 
     std::cout << "Initializing engine with window resolution " << WIDTH << "x" << HEIGHT << ", internal rendering resolution " << WIDTH*resScale << "x" << HEIGHT*resScale << " (scale " << resScale << ")."<< std::endl;
 
-    ma_result result;
-    ma_decoder decoder;
-    ma_device_config deviceConfig;
-    ma_device device;
-    result = ma_decoder_init_file("music.mp3", NULL, &decoder);
-    deviceConfig = ma_device_config_init(ma_device_type_playback);
-    deviceConfig.playback.format   = decoder.outputFormat;
-    deviceConfig.playback.channels = decoder.outputChannels;
-    deviceConfig.sampleRate        = decoder.outputSampleRate;
-    deviceConfig.dataCallback      = data_callback;
-    deviceConfig.pUserData         = &decoder;
-    ma_device_init(NULL, &deviceConfig, &device);
-    ma_device_start(&device);
-
+    // Mod music
+    MikMod_RegisterAllDrivers();
+    MikMod_RegisterLoader(&load_mod);
+    MikMod_Init("");
+    module = Player_Load("music.mod", 64, 0);
 
     glfwInit();
 
@@ -239,7 +202,11 @@ int main(int argc, char* argv[]) {
     GLint passthroughTextureLocation = glGetUniformLocation(passthroughShader.Program, "u_texture");
 
     float lastTime = static_cast<float>(glfwGetTime());
+    Player_Start(module);
+
     while (!glfwWindowShouldClose(window)) {
+        MikMod_Update();
+
         // Render to half-resolution framebuffer
         glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
         glViewport(0, 0, WIDTH*resScale, HEIGHT*resScale);
@@ -308,8 +275,9 @@ int main(int argc, char* argv[]) {
     }
 
     // Clean up
-    ma_device_uninit(&device);
-    ma_decoder_uninit(&decoder);
+    Player_Stop();
+    Player_Free(module);
+    MikMod_Exit();
     gltDeleteText(textDemoName);
     gltDeleteText(textStats);
     gltTerminate();
