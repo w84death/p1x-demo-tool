@@ -4,7 +4,6 @@
  * (c)2023.04
  * */
 
-#include <cstdio>
 #include <iostream>
 #include <string>
 #include <chrono>
@@ -18,16 +17,16 @@
 #define GLT_IMPLEMENTATION
 #include "gltext.h" /* https://github.com/vallentin/glText */
 
-const std::string fragmentSource =
+const char* fragmentSource =
 #include "glsl/fragment_shader.glsl"
 ;
-const std::string vertexSource =
+const char* vertexSource =
 #include "glsl/vertex_shader.glsl"
 ;
-const std::string passFragmentSource =
+const char* passFragmentSource =
 #include "glsl/pass_fragment_shader.glsl"
 ;
-const std::string passVertexSource =
+const char* passVertexSource =
 #include "glsl/pass_vertex_shader.glsl"
 ;
 
@@ -45,7 +44,7 @@ char demoName[32] = "SHADER C1TY.";
 XEvent event;
 MODULE *module;
 
-GLuint createShaderProgram(std::string vertexSource, std::string fragmentSource);
+GLuint createShaderProgram(const char *vertexSource, const char *fragmentSource);
 void _init(void){};
 void playMusic();
 
@@ -130,9 +129,6 @@ int main(int argc, char* argv[]) {
     GLTtext *textDemoName = gltCreateText();
     GLTtext *textStats = gltCreateText();
     gltSetText(textDemoName, demoName);
-
-    // Main shader
-    // GLuint shaderProgram = compileShader(fragmentSource,vertexSource);
 
     // Compile shaders
     GLuint shaderProgram = createShaderProgram(vertexSource, fragmentSource);
@@ -301,14 +297,14 @@ int main(int argc, char* argv[]) {
     return 0;
 }
 
-GLuint createShaderProgram(std::string vertexSource, std::string fragmentSource){
+GLuint createShaderProgram(const char *vertexSource, const char *fragmentSource){
     GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    const GLchar *source = (const GLchar *)vertexSource.c_str();
+    const GLchar *source = vertexSource;
     glShaderSource(vertexShader, 1, &source, 0);
     glCompileShader(vertexShader);
 
     GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    source = (const GLchar *)fragmentSource.c_str();
+    source = fragmentSource;
     glShaderSource(fragmentShader, 1, &source, 0);
     glCompileShader(fragmentShader);
 
