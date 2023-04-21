@@ -236,7 +236,9 @@ int main(int argc, char* argv[]) {
         double deltaTime = elapsed_seconds.count();
         previous_time = current_time;
         double frameMs = deltaTime*1000;
+
         if(isPlaying) demoTime += deltaTime;
+        if(demoTime > demoLength) demoTime = 0.0f;
 
         // Text drawing
         gltBeginDraw();
