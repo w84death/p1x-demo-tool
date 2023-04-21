@@ -12,6 +12,7 @@ Technical Details:
 * The application uses **X11** for window management and user input handling.
 * **GLEW** is utilized for accessing OpenGL functions.
 * **OpenGL 4.6** Core Profile is used for rendering.
+* **ALSA** for audio generation.
 * Vertex and fragment shaders are loaded from external files.
 * The application renders the scene to a lower resolution texture using a framebuffer.
 * The lower resolution texture is then rendered to the screen (bigger) framebuffer using a passthrough shader.
@@ -42,10 +43,10 @@ For statistics use ```--stats```, for fullscreen use ```--fullscreen```.
 ![Development Screenshot](media/screen1.jpg)
 
 Ubuntu
-```apt install libglew-dev x11-dev upx mikmod```
+```apt install libglew-dev x11-dev upx```
 
 Arch Linux (Steam Deck)
-```pacman -S glew libx11 xorgproto upx mikmod```
+```pacman -S glew libx11 xorgproto upx```
 
 ### Compile and compress binary
 ```./compile.sh```
