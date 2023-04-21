@@ -44,12 +44,17 @@ char stats[512];
 char demoName[32] = "SHADER C1TY.";
 XEvent event;
 MODULE *module;
-bool isPlaying = true;
-bool isRunning = true;
-
 
 GLuint createShaderProgram(std::string vertexSource, std::string fragmentSource);
 void _init(void){};
+void playMusic() {
+    Player_Start(module);
+    while(isRunning){
+        while(isPlaying)
+            MikMod_Update();
+    }
+    Player_Stop();
+}
 
 int main(int argc, char* argv[]) {
 
@@ -198,10 +203,6 @@ int main(int argc, char* argv[]) {
     GLint heightLocation = glGetUniformLocation(shaderProgram, "height");
     GLint passthroughTextureLocation = glGetUniformLocation(shaderPassProgram, "u_texture");
 
-void playMusic() {
-    Player_Start(module);
-    isPlaying = false;
-}
     std::thread musicThread(playMusic);
 
     std::chrono::time_point<std::chrono::high_resolution_clock> start_time = std::chrono::high_resolution_clock::now();
@@ -210,8 +211,6 @@ void playMusic() {
     float fps = 0;
 
     while (isRunning) {
-
-        MikMod_Update();
 
         // Render to half-resolution framebuffer
         glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
@@ -266,11 +265,6 @@ void playMusic() {
 
         gltEndDraw();
 
-        if (!isPlaying) {
-        musicThread.join();
-        break;
-    }
-
         glXSwapBuffers(display, window);
         while (XPending(display)) {
             XNextEvent(display, &event);
@@ -294,7 +288,7 @@ void playMusic() {
     }
 
     // Clean up
-    Player_Stop();
+    musicThread.join();
     Player_Free(module);
     MikMod_Exit();
     gltDeleteText(textDemoName);
