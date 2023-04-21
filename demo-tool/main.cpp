@@ -52,7 +52,7 @@ void playMusic();
 int main(int argc, char* argv[]) {
 
     // Welcome
-    std::cout << "Welcome to the -=[" << demoName << "]=- demo expeience.\n"<< std::endl;
+    std::cout << "Welcome to the -=[" << demoName << "]=- demo experience.\n"<< std::endl;
     std::cout << "DEVELOPMENT VERSION. BUGS ARE EXPECTED. CTRL+C TO KILL THE DEMO.\n"<< std::endl;
 
     for (int i = 1; i < argc; i++) {
@@ -140,7 +140,6 @@ int main(int argc, char* argv[]) {
 
     // Define vertices for the plane
     GLfloat vertices[] = {
-        // Positions      // Texture Coords
         -1.0f,  1.0f, 0.0f, 0.0f, 1.0f,
         -1.0f, -1.0f, 0.0f, 0.0f, 0.0f,
          1.0f, -1.0f, 0.0f, 1.0f, 0.0f,
@@ -196,12 +195,16 @@ int main(int argc, char* argv[]) {
     GLint heightLocation = glGetUniformLocation(shaderProgram, "height");
     GLint passthroughTextureLocation = glGetUniformLocation(shaderPassProgram, "u_texture");
 
+    // Bind texture to texture unit 0
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, halfResTexture);
+
+    // Play music (in a thread)
     std::thread musicThread(playMusic);
 
+    // Init time
     std::chrono::time_point<std::chrono::high_resolution_clock> start_time = std::chrono::high_resolution_clock::now();
     std::chrono::time_point<std::chrono::high_resolution_clock> previous_time = start_time;
-    int frames = 0;
-    float fps = 0;
 
     while (isRunning) {
 
@@ -222,49 +225,42 @@ int main(int argc, char* argv[]) {
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         glViewport(0, 0, WIDTH, HEIGHT);
         glClear(GL_COLOR_BUFFER_BIT);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, halfResTexture);
 
         glUseProgram(shaderPassProgram);
         glUniform1i(passthroughTextureLocation, 0);
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, halfResTexture);
         glBindVertexArray(VAO);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
 
+        // Calculate Delta Time
         std::chrono::time_point<std::chrono::high_resolution_clock> current_time = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> elapsed_seconds = current_time - previous_time;
         double deltaTime = elapsed_seconds.count();
         previous_time = current_time;
         double frameMs = deltaTime*1000;
 
+        // Increment and loop demo time
         if(isPlaying) demoTime += deltaTime;
         if(demoTime > demoLength) demoTime = 0.0f;
 
-        // Text drawing
-        gltBeginDraw();
-
-        gltColor(1.0f, 1.0f, 1.0f, 1.0f);
-        if(frameMs>18.0f){
-            gltColor(1.0f, 0.2f, 0.2f, 1.0f);
-        }
-
-
-        if(demoTime > 2.0f && demoTime < 5.0f)
-            gltDrawText2DAligned(textDemoName,
-                (GLfloat)(WIDTH*.5f),
-                (GLfloat)(HEIGHT*.5f),
-                5.0f,
-                GLT_CENTER, GLT_CENTER);
-
+        // Draw stats
         if(showStats){
+            gltBeginDraw();
+            gltColor(1.0f, 1.0f, 1.0f, 1.0f);
+            if(frameMs>18.0f) gltColor(1.0f, 0.2f, 0.2f, 1.0f);
             sprintf(stats, "%.0fx%.0f // %0.00f ms\nDemo Time %000.0fs", WIDTH*resScale, HEIGHT*resScale, frameMs, demoTime);
             gltSetText(textStats, stats);
             gltDrawText2D(textStats,32.0f,32.0f,1.0f);
+            gltEndDraw();
         }
 
-        gltEndDraw();
 
+        // Display
         glXSwapBuffers(display, window);
+
+        // Handle keyboard
         while (XPending(display)) {
             XNextEvent(display, &event);
             if (event.type == KeyPress) {
