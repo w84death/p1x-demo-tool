@@ -7,7 +7,7 @@
 #include <cstdio>
 #include <iostream>
 #include <string>
-#include <ctime>
+#include <chrono>
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <GL/glew.h>
@@ -194,10 +194,16 @@ int main(int argc, char* argv[]) {
     GLint heightLocation = glGetUniformLocation(shaderProgram, "height");
     GLint passthroughTextureLocation = glGetUniformLocation(shaderPassProgram, "u_texture");
 
-    float lastTime = (float)std::time(0);
+
     Player_Start(module);
 
+    std::chrono::time_point<std::chrono::high_resolution_clock> start_time = std::chrono::high_resolution_clock::now();
+    std::chrono::time_point<std::chrono::high_resolution_clock> previous_time = start_time;
+    int frames = 0;
+    float fps = 0;
+
     while (isRunning) {
+
         MikMod_Update();
 
         // Render to half-resolution framebuffer
@@ -226,14 +232,12 @@ int main(int argc, char* argv[]) {
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
 
+        std::chrono::time_point<std::chrono::high_resolution_clock> current_time = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> elapsed_seconds = current_time - previous_time;
+        double deltaTime = elapsed_seconds.count();
+        previous_time = current_time;
 
-        float nowTime = (float)std::time(0);
-        float deltaTime = nowTime - lastTime;
-        lastTime = nowTime;
-        int fps = static_cast<int>(1.0f / deltaTime);
-        int frameMs = static_cast<int>(deltaTime * 1000);
-
-        if(isPlaying) demoTime += .0333;
+        if(isPlaying) demoTime += deltaTime;
 
         // Text drawing
         gltBeginDraw();
@@ -248,16 +252,13 @@ int main(int argc, char* argv[]) {
                 GLT_CENTER, GLT_CENTER);
 
         if(showStats){
-            sprintf(stats, "%.0fx%.0f - %d fps, %d ms\nDemo Time %000.0fs", WIDTH*resScale, HEIGHT*resScale, fps, frameMs, demoTime);
+            sprintf(stats, "%.0fx%.0f // %0.00f ms\nDemo Time %000.0fs", WIDTH*resScale, HEIGHT*resScale, deltaTime*1000, demoTime);
             gltSetText(textStats, stats);
-            gltDrawText2DAligned(textStats,
-                (GLfloat)(WIDTH*.5f),
-                32.0f,
-                1.0f,
-                GLT_CENTER, GLT_CENTER);
+            gltDrawText2D(textStats,32.0f,32.0f,1.0f);
         }
 
         gltEndDraw();
+
         glXSwapBuffers(display, window);
         while (XPending(display)) {
             XNextEvent(display, &event);
@@ -320,3 +321,4 @@ GLuint createShaderProgram(std::string vertexSource, std::string fragmentSource)
 
     return shaderProgram;
 };
+
