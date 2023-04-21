@@ -33,10 +33,10 @@ For statistics use ```--stats```, for fullscreen use ```--fullscreen```.
 ![Development Screenshot](media/screen1.jpg)
 
 Ubuntu
-```apt install libglew-dev x11-dev upx```
+```apt install libglew-dev x11-dev upx mikmod```
 
 Arch Linux (Steam Deck)
-```pacman -S glew libx11 upx```
+```pacman -S glew libx11 xorgproto upx mikmod```
 
 ### Compile and compress binary
 ```./compile.sh```

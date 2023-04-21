@@ -47,14 +47,7 @@ MODULE *module;
 
 GLuint createShaderProgram(std::string vertexSource, std::string fragmentSource);
 void _init(void){};
-void playMusic() {
-    Player_Start(module);
-    while(isRunning){
-        while(isPlaying)
-            MikMod_Update();
-    }
-    Player_Stop();
-}
+void playMusic();
 
 int main(int argc, char* argv[]) {
 
@@ -242,13 +235,17 @@ int main(int argc, char* argv[]) {
         std::chrono::duration<double> elapsed_seconds = current_time - previous_time;
         double deltaTime = elapsed_seconds.count();
         previous_time = current_time;
-
+        double frameMs = deltaTime*1000;
         if(isPlaying) demoTime += deltaTime;
 
         // Text drawing
         gltBeginDraw();
 
         gltColor(1.0f, 1.0f, 1.0f, 1.0f);
+        if(frameMs>18.0f){
+            gltColor(1.0f, 0.2f, 0.2f, 1.0f);
+        }
+
 
         if(demoTime > 2.0f && demoTime < 5.0f)
             gltDrawText2DAligned(textDemoName,
@@ -258,7 +255,7 @@ int main(int argc, char* argv[]) {
                 GLT_CENTER, GLT_CENTER);
 
         if(showStats){
-            sprintf(stats, "%.0fx%.0f // %0.00f ms\nDemo Time %000.0fs", WIDTH*resScale, HEIGHT*resScale, deltaTime*1000, demoTime);
+            sprintf(stats, "%.0fx%.0f // %0.00f ms\nDemo Time %000.0fs", WIDTH*resScale, HEIGHT*resScale, frameMs, demoTime);
             gltSetText(textStats, stats);
             gltDrawText2D(textStats,32.0f,32.0f,1.0f);
         }
@@ -327,3 +324,11 @@ GLuint createShaderProgram(std::string vertexSource, std::string fragmentSource)
     return shaderProgram;
 };
 
+void playMusic() {
+    Player_Start(module);
+    while(isRunning){
+        if(isPlaying)
+            MikMod_Update();
+    }
+    Player_Stop();
+}
