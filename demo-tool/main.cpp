@@ -13,7 +13,11 @@
 #include <GL/gl.h>
 #include <GL/glx.h>
 #include <thread>
-#include <mikmod.h>
+#include <math.h>
+#include <cstdio>
+#include <random>
+#include <alsa/asoundlib.h>
+
 #define GLT_IMPLEMENTATION
 #include "gltext.h" /* https://github.com/vallentin/glText */
 
@@ -37,17 +41,22 @@ const float demoLength = 60.0f;
 bool isPlaying = true;
 bool isRunning = true;
 bool fullscreen = false;
-float lastConsoleOut = -0.1f;
 bool showStats = false;
 char stats[512];
-char demoName[32] = "SHADER C1TY.";
+char demoName[32] = "CODENAME: SHADER C1TY";
 XEvent event;
-MODULE *module;
+const char* device_name = "default";
+snd_pcm_t* handle;
+const float PI = std::acos(-1); // Approximation of pi
+const int num_channels = 1;
+unsigned int sample_rate = 44100;
+snd_pcm_uframes_t buffer_frames = 4096;
 
 GLuint createShaderProgram(const char *vertexSource, const char *fragmentSource);
+void fill_frequencies(float* frequencies, int num_frequencies, float base_frequency);
+void generate_music(float* buffer, int buffer_size, int sample_rate, float* frequencies, int num_frequencies);
 void _init(void){};
-void playMusic();
-
+void playAudio();
 int main(int argc, char* argv[]) {
 
     // Welcome
@@ -75,15 +84,24 @@ int main(int argc, char* argv[]) {
 
     std::cout << "> Initializing engine with window resolution " << WIDTH << "x" << HEIGHT << ", internal rendering resolution " << WIDTH*resScale << "x" << HEIGHT*resScale << " (scale " << resScale << ")."<< std::endl;
 
-    // Mod music
-    MikMod_RegisterAllDrivers();
-    // MikMod_RegisterLoader(&load_mod);
-    MikMod_RegisterLoader(&load_xm);
-    MikMod_Init("");
-    module = Player_Load("music.xm", 64, 0);
+    // Open the audio device
+
+    snd_pcm_open(&handle, device_name, SND_PCM_STREAM_PLAYBACK, 0);
+
+    // Set the audio parameters
+
+    snd_pcm_hw_params_t* hw_params;
+    snd_pcm_hw_params_alloca(&hw_params);
+    snd_pcm_hw_params_any(handle, hw_params);
+    snd_pcm_hw_params_set_access(handle, hw_params, SND_PCM_ACCESS_RW_INTERLEAVED);
+    snd_pcm_hw_params_set_format(handle, hw_params, SND_PCM_FORMAT_FLOAT_LE);
+    snd_pcm_hw_params_set_channels(handle, hw_params, num_channels);
+    snd_pcm_hw_params_set_rate_near(handle, hw_params, &sample_rate, 0);
+    snd_pcm_hw_params_set_period_size_near(handle, hw_params, &buffer_frames, 0);
+    snd_pcm_hw_params(handle, hw_params);
 
     // Init Xwindow
-        Display *display = XOpenDisplay(NULL);
+    Display *display = XOpenDisplay(NULL);
     int screen = DefaultScreen(display);
     Window root = RootWindow(display, screen);
     int visual_attribs[] = {
@@ -196,7 +214,7 @@ int main(int argc, char* argv[]) {
     glBindTexture(GL_TEXTURE_2D, halfResTexture);
 
     // Play music (in a thread)
-    std::thread musicThread(playMusic);
+    std::thread audioThread(playAudio);
 
     // Init time
     std::chrono::time_point<std::chrono::high_resolution_clock> start_time = std::chrono::high_resolution_clock::now();
@@ -252,7 +270,6 @@ int main(int argc, char* argv[]) {
             gltEndDraw();
         }
 
-
         // Display
         glXSwapBuffers(display, window);
 
@@ -262,7 +279,6 @@ int main(int argc, char* argv[]) {
             if (event.type == KeyPress) {
                 KeySym key = XLookupKeysym(&event.xkey, 0);
                 if (key == XK_space) {
-                    Player_TogglePause();
                     isPlaying = !isPlaying;
                 }else
                 if (key == XK_Up || key == XK_Down || key == XK_Left || key == XK_Right) {
@@ -279,9 +295,8 @@ int main(int argc, char* argv[]) {
     }
 
     // Clean up
-    musicThread.join();
-    Player_Free(module);
-    MikMod_Exit();
+    audioThread.join();
+    snd_pcm_close(handle);
     gltDeleteText(textDemoName);
     gltDeleteText(textStats);
     gltTerminate();
@@ -317,12 +332,50 @@ GLuint createShaderProgram(const char *vertexSource, const char *fragmentSource)
 
     return shaderProgram;
 };
+void fill_frequencies(float* frequencies, int num_frequencies, float base_frequency)
+{
+    const float semitone_ratio = std::pow(2.0f, 1.0f / 12.0f); // 12th root of 2
+    float frequency = base_frequency;
 
-void playMusic() {
-    Player_Start(module);
-    while(isRunning){
-        if(isPlaying)
-            MikMod_Update();
+    for (int i = 0; i < num_frequencies; ++i) {
+        frequencies[i] = frequency;
+        frequency *= semitone_ratio;
     }
-    Player_Stop();
+}
+void generate_music(float* buffer, int buffer_size, int sample_rate, float* frequencies, int num_frequencies,int index)
+{
+    for (int i = 0; i < buffer_size; ++i) {
+        float frequency = frequencies[index];
+
+        float t = static_cast<float>(i) / sample_rate;
+        float value = std::sin(2 * PI * frequency * t);
+        buffer[i] = value;
+    }
+}
+void playAudio(){
+    const int buffer_size = buffer_frames * num_channels;
+    float buffer[buffer_size];
+    const int num_frequencies = 48;
+    float frequencies[num_frequencies];
+    fill_frequencies(frequencies, num_frequencies, 24.50);
+    int i = 0;
+    float timer = 0;
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    float min = .05f, max = 1.0f;
+    std::uniform_int_distribution<> dis(0, num_frequencies - 1);
+    std::uniform_real_distribution<> len(min,max);
+
+    while (isRunning) {
+        if(isPlaying){
+            generate_music(buffer, buffer_size, sample_rate, frequencies, num_frequencies, i);
+            int frames_written = snd_pcm_writei(handle, buffer, buffer_frames);
+            if (frames_written < 0) snd_pcm_recover(handle, frames_written, 0);
+            timer+=0.05;
+            if (timer>len(gen)) {
+                i = dis(gen);
+                timer=0;
+            }
+        }
+    }
 }
