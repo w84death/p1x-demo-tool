@@ -1,9 +1,14 @@
 /*
+ * -----10--------20--------30--------40--------50--------60--------70-------80
+ *
  * P1X DEMO TOOL V2
  * by w84death^P1X
- * (c)2023.04
- * */
-
+ *
+ * https://github.com/w84death/p1x-demo-tool
+ * (c) 2023.04
+ *
+ * -----10--------20--------30--------40--------50--------60--------70-------80
+ */
 #include <iostream>
 #include <string>
 #include <chrono>
@@ -36,7 +41,7 @@ const char* pass_vertex_sourcec =
 ;
 
 /*
- * ----------------------------------------------------------------------------
+ * -----10--------20--------30--------40--------50--------60--------70-------80
  */
 char demo_name[32] = "CODENAME: SHADER C1TY";
 float demo_time = 0.0f;
@@ -53,9 +58,8 @@ std::atomic<bool> pause_playback{false};
 std::atomic<bool> quit_playback{false};
 XEvent event;
 
-
 /*
- * ----------------------------------------------------------------------------
+ * -----10--------20--------30--------40--------50--------60--------70-------80
  */
 struct Note {
     int pitch;      // MIDI note number
@@ -64,7 +68,7 @@ struct Note {
 
 
 /*
- * ----------------------------------------------------------------------------
+ * -----10--------20--------30--------40--------50--------60--------70-------80
  */
 float sine_wave(float frequency, float time) {
     const float PI = 3.14159265;
@@ -120,7 +124,7 @@ void playback_thread(std::vector<Note> &notes, int sample_rate) {
 }
 
 /*
- * ----------------------------------------------------------------------------
+ * -----10--------20--------30--------40--------50--------60--------70-------80
  */
 GLuint createShaderProgram(const char *vertex_source, const char *fragment_source){
     GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
@@ -144,11 +148,13 @@ GLuint createShaderProgram(const char *vertex_source, const char *fragment_sourc
 };
 
 /*
- * ----------------------------------------------------------------------------
+ * -----10--------20--------30--------40--------50--------60--------70-------80
  */
 int main(int argc, char* argv[]) {
 
-    // Welcome
+/*
+ * -----10--------20--------30--------40--------50--------60--------70-------80
+ */
     std::cout << "Welcome to the -=[" << demo_name << "]=- demo experience.\n"<< std::endl;
     std::cout << "DEVELOPMENT VERSION. BUGS ARE EXPECTED. CTRL+C TO KILL THE DEMO.\n"<< std::endl;
 
@@ -173,7 +179,9 @@ int main(int argc, char* argv[]) {
 
     std::cout << "> Initializing engine with window resolution " << window_width << "x" << window_height << ", internal rendering resolution " << window_width*resolution_scale << "x" << window_height*resolution_scale << " (scale " << resolution_scale << ")."<< std::endl;
 
-    // Setup audio
+/*
+ * -----10--------20--------30--------40--------50--------60--------70-------80
+ */
     std::vector<Note> notes = {
         {60, 0.5f},
         {62, 0.5f},
@@ -188,7 +196,9 @@ int main(int argc, char* argv[]) {
     int sample_rate = 44100;
     std::thread player(playback_thread, std::ref(notes), sample_rate);
 
-    // Init Xwindow
+/*
+ * -----10--------20--------30--------40--------50--------60--------70-------80
+ */
     Display *display = XOpenDisplay(NULL);
     int screen = DefaultScreen(display);
     Window root = RootWindow(display, screen);
@@ -221,14 +231,16 @@ int main(int argc, char* argv[]) {
     XMapWindow(display, window);
 
 
-    // Initialize GLEW
+/*
+ * -----10--------20--------30--------40--------50--------60--------70-------80
+ */
     glewExperimental = GL_TRUE;
     glewInit();
-
-    // Set viewport
     glViewport(0, 0, window_width, window_height);
 
-    // Initialize glText
+/*
+ * -----10--------20--------30--------40--------50--------60--------70-------80
+ */
     gltInit();
 
     // Creating text
@@ -236,7 +248,9 @@ int main(int argc, char* argv[]) {
     GLTtext *textStats = gltCreateText();
     gltSetText(textDemoName, demo_name);
 
-    // Compile shaders
+/*
+ * -----10--------20--------30--------40--------50--------60--------70-------80
+ */
     GLuint shaderProgram = createShaderProgram(vertex_source, fragment_source);
     GLuint shaderPassProgram = createShaderProgram(pass_vertex_sourcec, pass_fragment_sourcec);
 
@@ -301,7 +315,9 @@ int main(int argc, char* argv[]) {
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, halfResTexture);
 
-    // Init time
+/*
+ * -----10--------20--------30--------40--------50--------60--------70-------80
+ */
     std::chrono::time_point<std::chrono::high_resolution_clock> start_time = std::chrono::high_resolution_clock::now();
     std::chrono::time_point<std::chrono::high_resolution_clock> previous_time = start_time;
 
@@ -380,7 +396,9 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    // Clean up
+/*
+ * -----10--------20--------30--------40--------50--------60--------70-------80
+ */
     quit_playback = true;
     player.join();
     gltDeleteText(textDemoName);
@@ -397,3 +415,7 @@ int main(int argc, char* argv[]) {
 
     return 0;
 }
+
+/*
+ * -----10--------20--------30--------40--------50--------60--------70-------80
+ */
