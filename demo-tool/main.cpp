@@ -25,6 +25,7 @@
 #include <GL/gl.h>
 #include <GL/glx.h>
 #include <alsa/asoundlib.h>
+#include "music.h"
 #define GLT_IMPLEMENTATION
 #include "gltext.h" /* https://github.com/vallentin/glText */
 const char* fragment_source =
@@ -51,21 +52,11 @@ int window_width = 1280, window_height = 720;
 bool window_fullscreen = false;
 float resolution_scale = .5f;
 bool application_running = true;
-bool demo_playing = true;
 bool debug_show_stats = false;
 char stats[512];
 std::atomic<bool> pause_playback{false};
 std::atomic<bool> quit_playback{false};
 XEvent event;
-
-/*
- * -----10--------20--------30--------40--------50--------60--------70-------80
- */
-struct Note {
-    int pitch;      // MIDI note number
-    float duration; // duration in seconds
-};
-
 
 /*
  * -----10--------20--------30--------40--------50--------60--------70-------80
@@ -90,7 +81,7 @@ void play_note(Note note, snd_pcm_t *handle, int sample_rate) {
     snd_pcm_writei(handle, buffer, buffer_size);
 }
 
-void playback_thread(std::vector<Note> &notes, int sample_rate) {
+void playback_thread(int track_id, std::vector<Note> &notes, int sample_rate) {
     snd_pcm_t *handle;
     snd_pcm_open(&handle, "default", SND_PCM_STREAM_PLAYBACK, 0);
     snd_pcm_set_params(handle, SND_PCM_FORMAT_FLOAT, SND_PCM_ACCESS_RW_INTERLEAVED, 1, sample_rate, 1, 100000);
@@ -101,7 +92,7 @@ void playback_thread(std::vector<Note> &notes, int sample_rate) {
     while (!quit_playback) {
         if (!pause_playback) {
             if (is_paused) {
-                snd_pcm_pause(handle, 0); // Resume ALSA playback
+                snd_pcm_pause(handle, 0);
                 is_paused = false;
             }
 
@@ -113,7 +104,7 @@ void playback_thread(std::vector<Note> &notes, int sample_rate) {
             }
         } else {
             if (!is_paused) {
-                snd_pcm_pause(handle, 1); // Pause ALSA playback
+                snd_pcm_pause(handle, 1);
                 is_paused = true;
             }
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -126,7 +117,7 @@ void playback_thread(std::vector<Note> &notes, int sample_rate) {
 /*
  * -----10--------20--------30--------40--------50--------60--------70-------80
  */
-GLuint createShaderProgram(const char *vertex_source, const char *fragment_source){
+GLuint create_shader_program(const char *vertex_source, const char *fragment_source){
     GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
     const GLchar *source = vertex_source;
     glShaderSource(vertexShader, 1, &source, 0);
@@ -198,19 +189,11 @@ int main(int argc, char* argv[]) {
 /*
  * -----10--------20--------30--------40--------50--------60--------70-------80
  */
-    std::vector<Note> notes = {
-        {60, 0.5f},
-        {62, 0.5f},
-        {64, 0.5f},
-        {65, 0.5f},
-        {67, 0.5f},
-        {69, 0.5f},
-        {71, 0.5f},
-        {72, 0.5f},
-    };
-
     int sample_rate = 44100;
-    std::thread player(playback_thread, std::ref(notes), sample_rate);
+    std::vector<std::thread> player_threads;
+    for (int i = 0; i < tracks.size(); ++i) {
+        player_threads.emplace_back(playback_thread, i, std::ref(tracks[i]), sample_rate);
+    }
 
 /*
  * -----10--------20--------30--------40--------50--------60--------70-------80
@@ -258,26 +241,20 @@ int main(int argc, char* argv[]) {
  * -----10--------20--------30--------40--------50--------60--------70-------80
  */
     gltInit();
-
-    // Creating text
-    GLTtext *textDemoName = gltCreateText();
     GLTtext *textStats = gltCreateText();
-    gltSetText(textDemoName, demo_name);
 
 /*
  * -----10--------20--------30--------40--------50--------60--------70-------80
  */
-    GLuint shaderProgram = createShaderProgram(vertex_source, fragment_source);
-    GLuint shaderPassProgram = createShaderProgram(pass_vertex_sourcec, pass_fragment_sourcec);
+    GLuint shaderProgram = create_shader_program(vertex_source, fragment_source);
+    GLuint shaderPassProgram = create_shader_program(pass_vertex_sourcec, pass_fragment_sourcec);
 
-    // Define vertices for the plane
     GLfloat vertices[] = {
         -1.0f,  1.0f, 0.0f, 0.0f, 1.0f,
         -1.0f, -1.0f, 0.0f, 0.0f, 0.0f,
          1.0f, -1.0f, 0.0f, 1.0f, 0.0f,
          1.0f,  1.0f, 0.0f, 1.0f, 1.0f
     };
-
     GLuint indices[] = {
         0, 1, 2,
         2, 3, 0
@@ -292,44 +269,29 @@ int main(int argc, char* argv[]) {
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-
-    // Vertex position attribute
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (GLvoid*)0);
     glEnableVertexAttribArray(0);
-
-    // Texture coordinate attribute
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
     glEnableVertexAttribArray(1);
     glBindVertexArray(0);
-
-    // Create half-resolution framebuffer
     GLuint framebuffer;
     glGenFramebuffers(1, &framebuffer);
     glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
-
-    // Create half-resolution texture
     GLuint halfResTexture;
     glGenTextures(1, &halfResTexture);
     glBindTexture(GL_TEXTURE_2D, halfResTexture);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, window_width*resolution_scale, window_height*resolution_scale, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-    // Attach texture to framebuffer
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, halfResTexture, 0);
-
-    // Unbind framebuffer
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, halfResTexture);
 
-    // Uniforms
     GLint timeLocation = glGetUniformLocation(shaderProgram, "time");
     GLint widthLocation = glGetUniformLocation(shaderProgram, "width");
     GLint heightLocation = glGetUniformLocation(shaderProgram, "height");
     GLint passthroughTextureLocation = glGetUniformLocation(shaderPassProgram, "u_texture");
-
-    // Bind texture to texture unit 0
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, halfResTexture);
 
 /*
  * -----10--------20--------30--------40--------50--------60--------70-------80
@@ -339,7 +301,6 @@ int main(int argc, char* argv[]) {
 
     while (application_running) {
 
-        // Render to half-resolution framebuffer
         glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
         glViewport(0, 0, window_width*resolution_scale, window_height*resolution_scale);
         glClear(GL_COLOR_BUFFER_BIT);
@@ -352,7 +313,6 @@ int main(int argc, char* argv[]) {
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
 
-        // Render to screen framebuffer
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         glViewport(0, 0, window_width, window_height);
         glClear(GL_COLOR_BUFFER_BIT);
@@ -365,18 +325,15 @@ int main(int argc, char* argv[]) {
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
 
-        // Calculate Delta Time
         std::chrono::time_point<std::chrono::high_resolution_clock> current_time = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> elapsed_seconds = current_time - previous_time;
         double deltaTime = elapsed_seconds.count();
         previous_time = current_time;
         double frameMs = deltaTime*1000;
 
-        // Increment and loop demo time
-        if(demo_playing) demo_time += deltaTime;
+        if(!pause_playback) demo_time += deltaTime;
         if(demo_time > demo_length) demo_time = 0.0f;
 
-        // Draw stats
         if(debug_show_stats){
             gltBeginDraw();
             gltColor(1.0f, 1.0f, 1.0f, 1.0f);
@@ -387,16 +344,13 @@ int main(int argc, char* argv[]) {
             gltEndDraw();
         }
 
-        // Display
         glXSwapBuffers(display, window);
 
-        // Handle keyboard
         while (XPending(display)) {
             XNextEvent(display, &event);
             if (event.type == KeyPress) {
                 KeySym key = XLookupKeysym(&event.xkey, 0);
                 if (key == XK_space) {
-                    demo_playing = !demo_playing;
                     pause_playback.store(!pause_playback.load());
                 }else
                 if (key == XK_Up || key == XK_Down || key == XK_Left || key == XK_Right) {
@@ -406,8 +360,10 @@ int main(int argc, char* argv[]) {
                         // Arrow + Shift key was pressed
 
                     }
-                }else
+                }else{
                     application_running = false;
+                    quit_playback = true;
+                }
             }
         }
     }
@@ -415,9 +371,9 @@ int main(int argc, char* argv[]) {
 /*
  * -----10--------20--------30--------40--------50--------60--------70-------80
  */
-    quit_playback = true;
-    player.join();
-    gltDeleteText(textDemoName);
+    for (auto &t : player_threads) {
+        t.join();
+    }
     gltDeleteText(textStats);
     gltTerminate();
     glDeleteVertexArrays(1, &VAO);
