@@ -150,31 +150,47 @@ GLuint createShaderProgram(const char *vertex_source, const char *fragment_sourc
 /*
  * -----10--------20--------30--------40--------50--------60--------70-------80
  */
-int main(int argc, char* argv[]) {
+void print_help() {
+    std::cout << "Usage: ./demo [options]\n\n"
+              << "Options:\n"
+              << "  --width <value>           Set window width\n"
+              << "  --height <value>          Set window height\n"
+              << "  --resolution-scale <value> Set resolution scale\n"
+              << "  --stats                   Show statistics\n"
+              << "  --window_fullscreen       Enable fullscreen mode\n"
+              << "  --help                    Display this help message\n"
+              << std::endl;
+}
 
 /*
  * -----10--------20--------30--------40--------50--------60--------70-------80
  */
+int main(int argc, char* argv[]) {
+
     std::cout << "Welcome to the -=[" << demo_name << "]=- demo experience.\n"<< std::endl;
     std::cout << "DEVELOPMENT VERSION. BUGS ARE EXPECTED. CTRL+C TO KILL THE DEMO.\n"<< std::endl;
 
-    for (int i = 1; i < argc; i++) {
+    for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
 
-        if (arg == "--width" && i + 1 < argc) {
+        if (arg == "--help") {
+            print_help();
+            return 0;
+        } else if (arg == "--width" && i + 1 < argc) {
             window_width = std::stof(argv[++i]);
         } else if (arg == "--height" && i + 1 < argc) {
             window_height = std::stof(argv[++i]);
-        } else if (arg == "--resolution-scale" && i + 1 < argc){
+        } else if (arg == "--resolution-scale" && i + 1 < argc) {
             resolution_scale = std::stof(argv[++i]);
-        }else if (arg == "--stats") {
+        } else if (arg == "--stats") {
             debug_show_stats = true;
-        }else if (arg == "--window_fullscreen") {
+        } else if (arg == "--window_fullscreen") {
             window_fullscreen = true;
-        }else {
-            std::cout << "> Wrong pargument: " << arg << "\n\n> Usage:\n$ ./demo --width 640 --height 360 --resolution-scale 0.25\n\nFor statistics use --stats, for window_fullscreen use --window_fullscreen.\n" << std::endl;
+        } else {
+            std::cout << "> Wrong argument: " << arg << std::endl;
+            print_help();
             return 0;
-       }
+        }
     }
 
     std::cout << "> Initializing engine with window resolution " << window_width << "x" << window_height << ", internal rendering resolution " << window_width*resolution_scale << "x" << window_height*resolution_scale << " (scale " << resolution_scale << ")."<< std::endl;
