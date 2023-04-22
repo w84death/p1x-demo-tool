@@ -7,98 +7,186 @@
 #include <iostream>
 #include <string>
 #include <chrono>
+#include <thread>
+#include <math.h>
+#include <cstdio>
+#include <random>
+#include <vector>
+#include <atomic>
+#include <cmath>
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <GL/glew.h>
 #include <GL/gl.h>
 #include <GL/glx.h>
-#include <thread>
-#include <math.h>
-#include <cstdio>
-#include <random>
 #include <alsa/asoundlib.h>
-
 #define GLT_IMPLEMENTATION
 #include "gltext.h" /* https://github.com/vallentin/glText */
-
-const char* fragmentSource =
+const char* fragment_source =
 #include "glsl/fragment_shader.glsl"
 ;
-const char* vertexSource =
+const char* vertex_source =
 #include "glsl/vertex_shader.glsl"
 ;
-const char* passFragmentSource =
+const char* pass_fragment_sourcec =
 #include "glsl/pass_fragment_shader.glsl"
 ;
-const char* passVertexSource =
+const char* pass_vertex_sourcec =
 #include "glsl/pass_vertex_shader.glsl"
 ;
 
-int WIDTH = 1280, HEIGHT = 720;
-float resScale = .5f;
-float demoTime = 0.0f;
-const float demoLength = 60.0f;
-bool isPlaying = true;
-bool isRunning = true;
-bool fullscreen = false;
-bool showStats = false;
-char stats[512];
-char demoName[32] = "CODENAME: SHADER C1TY";
-XEvent event;
-const char* device_name = "default";
-snd_pcm_t* handle;
-const float PI = std::acos(-1); // Approximation of pi
-const int num_channels = 1;
-unsigned int sample_rate = 44100;
-snd_pcm_uframes_t buffer_frames = 4096;
+/*
+ * ----------------------------------------------------------------------------
+ */
+char demo_name[32] = "CODENAME: SHADER C1TY";
+float demo_time = 0.0f;
+const float demo_length = 60.0f;
 
-GLuint createShaderProgram(const char *vertexSource, const char *fragmentSource);
-void fill_frequencies(float* frequencies, int num_frequencies, float base_frequency);
-void generate_music(float* buffer, int buffer_size, int sample_rate, float* frequencies, int num_frequencies);
-void _init(void){};
-void playAudio();
+int window_width = 1280, window_height = 720;
+bool window_fullscreen = false;
+float resolution_scale = .5f;
+bool application_running = true;
+bool demo_playing = true;
+bool debug_show_stats = false;
+char stats[512];
+std::atomic<bool> pause_playback{false};
+std::atomic<bool> quit_playback{false};
+XEvent event;
+
+
+/*
+ * ----------------------------------------------------------------------------
+ */
+struct Note {
+    int pitch;      // MIDI note number
+    float duration; // duration in seconds
+};
+
+
+/*
+ * ----------------------------------------------------------------------------
+ */
+float sine_wave(float frequency, float time) {
+    const float PI = 3.14159265;
+    return sin(2 * PI * frequency * time);
+}
+
+float midi_note_to_frequency(int note) {
+    return 440.0f * pow(2.0f, (note - 69) / 12.0f);
+}
+
+void play_note(Note note, snd_pcm_t *handle, int sample_rate) {
+    int buffer_size = sample_rate * note.duration;
+    float buffer[buffer_size];
+
+    for (int i = 0; i < buffer_size; ++i) {
+        buffer[i] = sine_wave(midi_note_to_frequency(note.pitch), static_cast<float>(i) / sample_rate);
+    }
+
+    snd_pcm_writei(handle, buffer, buffer_size);
+}
+
+void playback_thread(std::vector<Note> &notes, int sample_rate) {
+    snd_pcm_t *handle;
+    snd_pcm_open(&handle, "default", SND_PCM_STREAM_PLAYBACK, 0);
+    snd_pcm_set_params(handle, SND_PCM_FORMAT_FLOAT, SND_PCM_ACCESS_RW_INTERLEAVED, 1, sample_rate, 1, 100000);
+
+    size_t current_note = 0;
+    bool is_paused = false;
+
+    while (!quit_playback) {
+        if (!pause_playback) {
+            if (is_paused) {
+                snd_pcm_pause(handle, 0); // Resume ALSA playback
+                is_paused = false;
+            }
+
+            if (current_note < notes.size()) {
+                play_note(notes[current_note], handle, sample_rate);
+                current_note++;
+            } else {
+                current_note = 0;
+            }
+        } else {
+            if (!is_paused) {
+                snd_pcm_pause(handle, 1); // Pause ALSA playback
+                is_paused = true;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+    }
+
+    snd_pcm_close(handle);
+}
+
+/*
+ * ----------------------------------------------------------------------------
+ */
+GLuint createShaderProgram(const char *vertex_source, const char *fragment_source){
+    GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
+    const GLchar *source = vertex_source;
+    glShaderSource(vertexShader, 1, &source, 0);
+    glCompileShader(vertexShader);
+
+    GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+    source = fragment_source;
+    glShaderSource(fragmentShader, 1, &source, 0);
+    glCompileShader(fragmentShader);
+
+    GLuint shaderProgram = glCreateProgram();
+    glAttachShader(shaderProgram, vertexShader);
+    glAttachShader(shaderProgram, fragmentShader);
+    glLinkProgram(shaderProgram);
+    glDetachShader(shaderProgram, vertexShader);
+    glDetachShader(shaderProgram, fragmentShader);
+
+    return shaderProgram;
+};
+
+/*
+ * ----------------------------------------------------------------------------
+ */
 int main(int argc, char* argv[]) {
 
     // Welcome
-    std::cout << "Welcome to the -=[" << demoName << "]=- demo experience.\n"<< std::endl;
+    std::cout << "Welcome to the -=[" << demo_name << "]=- demo experience.\n"<< std::endl;
     std::cout << "DEVELOPMENT VERSION. BUGS ARE EXPECTED. CTRL+C TO KILL THE DEMO.\n"<< std::endl;
 
     for (int i = 1; i < argc; i++) {
         std::string arg = argv[i];
 
         if (arg == "--width" && i + 1 < argc) {
-            WIDTH = std::stof(argv[++i]);
+            window_width = std::stof(argv[++i]);
         } else if (arg == "--height" && i + 1 < argc) {
-            HEIGHT = std::stof(argv[++i]);
+            window_height = std::stof(argv[++i]);
         } else if (arg == "--resolution-scale" && i + 1 < argc){
-            resScale = std::stof(argv[++i]);
+            resolution_scale = std::stof(argv[++i]);
         }else if (arg == "--stats") {
-            showStats = true;
-        }else if (arg == "--fullscreen") {
-            fullscreen = true;
+            debug_show_stats = true;
+        }else if (arg == "--window_fullscreen") {
+            window_fullscreen = true;
         }else {
-            std::cout << "> Wrong pargument: " << arg << "\n\n> Usage:\n$ ./demo --width 640 --height 360 --resolution-scale 0.25\n\nFor statistics use --stats, for fullscreen use --fullscreen.\n" << std::endl;
+            std::cout << "> Wrong pargument: " << arg << "\n\n> Usage:\n$ ./demo --width 640 --height 360 --resolution-scale 0.25\n\nFor statistics use --stats, for window_fullscreen use --window_fullscreen.\n" << std::endl;
             return 0;
        }
     }
 
-    std::cout << "> Initializing engine with window resolution " << WIDTH << "x" << HEIGHT << ", internal rendering resolution " << WIDTH*resScale << "x" << HEIGHT*resScale << " (scale " << resScale << ")."<< std::endl;
+    std::cout << "> Initializing engine with window resolution " << window_width << "x" << window_height << ", internal rendering resolution " << window_width*resolution_scale << "x" << window_height*resolution_scale << " (scale " << resolution_scale << ")."<< std::endl;
 
-    // Open the audio device
+    // Setup audio
+    std::vector<Note> notes = {
+        {60, 0.5f},
+        {62, 0.5f},
+        {64, 0.5f},
+        {65, 0.5f},
+        {67, 0.5f},
+        {69, 0.5f},
+        {71, 0.5f},
+        {72, 0.5f},
+    };
 
-    snd_pcm_open(&handle, device_name, SND_PCM_STREAM_PLAYBACK, 0);
-
-    // Set the audio parameters
-
-    snd_pcm_hw_params_t* hw_params;
-    snd_pcm_hw_params_alloca(&hw_params);
-    snd_pcm_hw_params_any(handle, hw_params);
-    snd_pcm_hw_params_set_access(handle, hw_params, SND_PCM_ACCESS_RW_INTERLEAVED);
-    snd_pcm_hw_params_set_format(handle, hw_params, SND_PCM_FORMAT_FLOAT_LE);
-    snd_pcm_hw_params_set_channels(handle, hw_params, num_channels);
-    snd_pcm_hw_params_set_rate_near(handle, hw_params, &sample_rate, 0);
-    snd_pcm_hw_params_set_period_size_near(handle, hw_params, &buffer_frames, 0);
-    snd_pcm_hw_params(handle, hw_params);
+    int sample_rate = 44100;
+    std::thread player(playback_thread, std::ref(notes), sample_rate);
 
     // Init Xwindow
     Display *display = XOpenDisplay(NULL);
@@ -118,7 +206,7 @@ int main(int argc, char* argv[]) {
     Window window = XCreateWindow(
         display,
         root,
-        0, 0, WIDTH, HEIGHT,
+        0, 0, window_width, window_height,
         0,
         visual_info->depth,
         InputOutput,
@@ -126,7 +214,7 @@ int main(int argc, char* argv[]) {
         CWColormap | CWEventMask,
         &window_attribs
     );
-    XStoreName(display, window, demoName);
+    XStoreName(display, window, demo_name);
 
     GLXContext context = glXCreateContext(display, visual_info, NULL, GL_TRUE);
     glXMakeCurrent(display, window, context);
@@ -138,7 +226,7 @@ int main(int argc, char* argv[]) {
     glewInit();
 
     // Set viewport
-    glViewport(0, 0, WIDTH, HEIGHT);
+    glViewport(0, 0, window_width, window_height);
 
     // Initialize glText
     gltInit();
@@ -146,11 +234,11 @@ int main(int argc, char* argv[]) {
     // Creating text
     GLTtext *textDemoName = gltCreateText();
     GLTtext *textStats = gltCreateText();
-    gltSetText(textDemoName, demoName);
+    gltSetText(textDemoName, demo_name);
 
     // Compile shaders
-    GLuint shaderProgram = createShaderProgram(vertexSource, fragmentSource);
-    GLuint shaderPassProgram = createShaderProgram(passVertexSource, passFragmentSource);
+    GLuint shaderProgram = createShaderProgram(vertex_source, fragment_source);
+    GLuint shaderPassProgram = createShaderProgram(pass_vertex_sourcec, pass_fragment_sourcec);
 
     // Define vertices for the plane
     GLfloat vertices[] = {
@@ -193,7 +281,7 @@ int main(int argc, char* argv[]) {
     GLuint halfResTexture;
     glGenTextures(1, &halfResTexture);
     glBindTexture(GL_TEXTURE_2D, halfResTexture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, WIDTH*resScale, HEIGHT*resScale, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, window_width*resolution_scale, window_height*resolution_scale, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
@@ -213,31 +301,28 @@ int main(int argc, char* argv[]) {
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, halfResTexture);
 
-    // Play music (in a thread)
-    std::thread audioThread(playAudio);
-
     // Init time
     std::chrono::time_point<std::chrono::high_resolution_clock> start_time = std::chrono::high_resolution_clock::now();
     std::chrono::time_point<std::chrono::high_resolution_clock> previous_time = start_time;
 
-    while (isRunning) {
+    while (application_running) {
 
         // Render to half-resolution framebuffer
         glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
-        glViewport(0, 0, WIDTH*resScale, HEIGHT*resScale);
+        glViewport(0, 0, window_width*resolution_scale, window_height*resolution_scale);
         glClear(GL_COLOR_BUFFER_BIT);
 
         glUseProgram(shaderProgram);
-        glUniform1f(timeLocation, demoTime);
-        glUniform1f(widthLocation, static_cast<float>(WIDTH*resScale));
-        glUniform1f(heightLocation, static_cast<float>(HEIGHT*resScale));
+        glUniform1f(timeLocation, demo_time);
+        glUniform1f(widthLocation, static_cast<float>(window_width*resolution_scale));
+        glUniform1f(heightLocation, static_cast<float>(window_height*resolution_scale));
         glBindVertexArray(VAO);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
 
         // Render to screen framebuffer
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        glViewport(0, 0, WIDTH, HEIGHT);
+        glViewport(0, 0, window_width, window_height);
         glClear(GL_COLOR_BUFFER_BIT);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, halfResTexture);
@@ -256,15 +341,15 @@ int main(int argc, char* argv[]) {
         double frameMs = deltaTime*1000;
 
         // Increment and loop demo time
-        if(isPlaying) demoTime += deltaTime;
-        if(demoTime > demoLength) demoTime = 0.0f;
+        if(demo_playing) demo_time += deltaTime;
+        if(demo_time > demo_length) demo_time = 0.0f;
 
         // Draw stats
-        if(showStats){
+        if(debug_show_stats){
             gltBeginDraw();
             gltColor(1.0f, 1.0f, 1.0f, 1.0f);
             if(frameMs>18.0f) gltColor(1.0f, 0.2f, 0.2f, 1.0f);
-            sprintf(stats, "%.0fx%.0f // %0.00f ms\nDemo Time %000.0fs", WIDTH*resScale, HEIGHT*resScale, frameMs, demoTime);
+            sprintf(stats, "%.0fx%.0f // %0.00f ms\nDemo Time %000.0fs", window_width*resolution_scale, window_height*resolution_scale, frameMs, demo_time);
             gltSetText(textStats, stats);
             gltDrawText2D(textStats,32.0f,32.0f,1.0f);
             gltEndDraw();
@@ -279,7 +364,8 @@ int main(int argc, char* argv[]) {
             if (event.type == KeyPress) {
                 KeySym key = XLookupKeysym(&event.xkey, 0);
                 if (key == XK_space) {
-                    isPlaying = !isPlaying;
+                    demo_playing = !demo_playing;
+                    pause_playback.store(!pause_playback.load());
                 }else
                 if (key == XK_Up || key == XK_Down || key == XK_Left || key == XK_Right) {
                     // Arrow key was pressed
@@ -289,14 +375,14 @@ int main(int argc, char* argv[]) {
 
                     }
                 }else
-                    isRunning = false;
+                    application_running = false;
             }
         }
     }
 
     // Clean up
-    audioThread.join();
-    snd_pcm_close(handle);
+    quit_playback = true;
+    player.join();
     gltDeleteText(textDemoName);
     gltDeleteText(textStats);
     gltTerminate();
@@ -310,72 +396,4 @@ int main(int argc, char* argv[]) {
     XCloseDisplay(display);
 
     return 0;
-}
-
-GLuint createShaderProgram(const char *vertexSource, const char *fragmentSource){
-    GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    const GLchar *source = vertexSource;
-    glShaderSource(vertexShader, 1, &source, 0);
-    glCompileShader(vertexShader);
-
-    GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    source = fragmentSource;
-    glShaderSource(fragmentShader, 1, &source, 0);
-    glCompileShader(fragmentShader);
-
-    GLuint shaderProgram = glCreateProgram();
-    glAttachShader(shaderProgram, vertexShader);
-    glAttachShader(shaderProgram, fragmentShader);
-    glLinkProgram(shaderProgram);
-    glDetachShader(shaderProgram, vertexShader);
-    glDetachShader(shaderProgram, fragmentShader);
-
-    return shaderProgram;
-};
-void fill_frequencies(float* frequencies, int num_frequencies, float base_frequency)
-{
-    const float semitone_ratio = std::pow(2.0f, 1.0f / 12.0f); // 12th root of 2
-    float frequency = base_frequency;
-
-    for (int i = 0; i < num_frequencies; ++i) {
-        frequencies[i] = frequency;
-        frequency *= semitone_ratio;
-    }
-}
-void generate_music(float* buffer, int buffer_size, int sample_rate, float* frequencies, int num_frequencies,int index)
-{
-    for (int i = 0; i < buffer_size; ++i) {
-        float frequency = frequencies[index];
-
-        float t = static_cast<float>(i) / sample_rate;
-        float value = std::sin(2 * PI * frequency * t);
-        buffer[i] = value;
-    }
-}
-void playAudio(){
-    const int buffer_size = buffer_frames * num_channels;
-    float buffer[buffer_size];
-    const int num_frequencies = 48;
-    float frequencies[num_frequencies];
-    fill_frequencies(frequencies, num_frequencies, 24.50);
-    int i = 0;
-    float timer = 0;
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    float min = .05f, max = 1.0f;
-    std::uniform_int_distribution<> dis(0, num_frequencies - 1);
-    std::uniform_real_distribution<> len(min,max);
-
-    while (isRunning) {
-        if(isPlaying){
-            generate_music(buffer, buffer_size, sample_rate, frequencies, num_frequencies, i);
-            int frames_written = snd_pcm_writei(handle, buffer, buffer_frames);
-            if (frames_written < 0) snd_pcm_recover(handle, frames_written, 0);
-            timer+=0.05;
-            if (timer>len(gen)) {
-                i = dis(gen);
-                timer=0;
-            }
-        }
-    }
 }
