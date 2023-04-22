@@ -167,7 +167,7 @@ void print_help() {
  */
 int main(int argc, char* argv[]) {
 
-    std::cout << "Welcome to the -=[" << demo_name << "]=- demo experience.\n"<< std::endl;
+    std::cout << "P1X DEMO TOOL V2 by w84death^P1X // (c) 2023.04\n"<< std::endl;
     std::cout << "DEVELOPMENT VERSION. BUGS ARE EXPECTED. CTRL+C TO KILL THE DEMO.\n"<< std::endl;
 
     for (int i = 1; i < argc; ++i) {
@@ -193,7 +193,7 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    std::cout << "> Initializing engine with window resolution " << window_width << "x" << window_height << ", internal rendering resolution " << window_width*resolution_scale << "x" << window_height*resolution_scale << " (scale " << resolution_scale << ")."<< std::endl;
+    std::cout << "> Initializing engine with:\n  - window resolution " << window_width << "x" << window_height << "\n  - internal rendering resolution " << window_width*resolution_scale << "x" << window_height*resolution_scale << " (scale " << resolution_scale << ")."<< std::endl;
 
 /*
  * -----10--------20--------30--------40--------50--------60--------70-------80
