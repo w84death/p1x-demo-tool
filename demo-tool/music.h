@@ -22,16 +22,8 @@ struct Note {
 
 std::vector<float> track_volumes = {1.0f, 0.1f, .2f, 0.3f};
 
-std::vector<Note> generate_arpeggiator_sequence(int root_note, float duration, int instrument) {
-    std::vector<Note> arpeggiator_sequence;
-    std::vector<int> intervals = {0, 4, 7}; // Major chord intervals
-
-    for (int i = 0; i < intervals.size(); ++i) {
-        arpeggiator_sequence.push_back({root_note + intervals[i], duration, instrument});
-    }
-
-    return arpeggiator_sequence;
-}
+float delay_time = 0.1f; // Delay time in seconds
+float feedback = 0.5f; // Feedback amount (0.0 to 1.0)
 
 std::vector<std::vector<Note>> tracks = {
     // Kick track

@@ -37,6 +37,18 @@ int playing_track;
 bool debug_show_notes = false;
 std::vector<bool> muted_tracks(tracks.size(), false);
 std::vector<float> track_current_volumes = track_volumes;
+unsigned int delay_samples = static_cast<unsigned int>(delay_time * sample_rate);
+std::vector<float> delay_buffer(delay_samples, 0.0f);
+unsigned int write_ptr = 0;
+unsigned int read_ptr = 0;
+struct ADSR {
+    float attack;
+    float decay;
+    float sustain;
+    float release;
+    float sustain_level;
+};
+
 /*
  * -----10--------20--------30--------40--------50--------60--------70-------80
  */
@@ -44,6 +56,15 @@ std::vector<float> track_current_volumes = track_volumes;
 float sine_wave(float frequency, float time) {
     const float PI = 3.14159265;
     return sin(2 * PI * frequency * time);
+}
+
+float saw_wave(float frequency, float time) {
+    float x = fmod(frequency * time, 1.0f);
+    return (2.0f * x) - 1.0f;
+}
+
+float square_wave(float frequency, float time) {
+    return (sinf(2 * M_PI * frequency * time) >= 0.0f) ? 1.0f : -1.0f;
 }
 
 float midi_note_to_frequency(int note) {
@@ -61,6 +82,19 @@ float lfo(float time, float frequency, float amplitude) {
     return amplitude * std::sin(2 * M_PI * frequency * time);
 }
 
+float adsr_envelope(const ADSR &adsr, float time, float key_release_time) {
+    if (time < adsr.attack) {
+        return time / adsr.attack;
+    } else if (time < adsr.attack + adsr.decay) {
+        return 1.0f - (time - adsr.attack) / adsr.decay * (1.0f - adsr.sustain_level);
+    } else if (key_release_time < 0 || time < key_release_time) {
+        return adsr.sustain_level;
+    } else if (time < key_release_time + adsr.release) {
+        return adsr.sustain_level * (1.0f - (time - key_release_time) / adsr.release);
+    } else {
+        return 0.0f;
+    }
+}
 /*
  * -----10--------20--------30--------40--------50--------60--------70-------80
  */
@@ -78,30 +112,19 @@ float hi_hat(float frequency, float time, float volume) {
     return envelope * white_noise()*volume;
 }
 
-float arpeggiator_synth(float frequency, float time, float volume) {
-    return (sine_wave(frequency, time) + sine_wave(frequency+5.0f, time)*.25) *volume;
-}
+float synth(float frequency, float time, float key_release_time, float volume) {
+    float sine = sine_wave(frequency, time);
+    float saw = saw_wave(frequency, time) * 0.5f;
+    float square = square_wave(frequency, time) * 0.5f;
 
-struct ADSR {
-    float attack;
-    float decay;
-    float sustain;
-    float release;
-    float sustain_level;
-};
+    float lfo_signal = lfo(time, 0.5f, 0.5f);
+    float modulated_frequency = frequency + lfo_signal * 5.0f;
+    float sine_modulated = sine_wave(modulated_frequency, time) * 0.25f;
 
-float adsr_envelope(const ADSR &adsr, float time, float key_release_time) {
-    if (time < adsr.attack) {
-        return time / adsr.attack;
-    } else if (time < adsr.attack + adsr.decay) {
-        return 1.0f - (time - adsr.attack) / adsr.decay * (1.0f - adsr.sustain_level);
-    } else if (key_release_time < 0 || time < key_release_time) {
-        return adsr.sustain_level;
-    } else if (time < key_release_time + adsr.release) {
-        return adsr.sustain_level * (1.0f - (time - key_release_time) / adsr.release);
-    } else {
-        return 0.0f;
-    }
+    ADSR envelope = {0.01f, 0.1f, 0.5f, 0.2f, 1.0f};
+    float amplitude_envelope = adsr_envelope(envelope, time, key_release_time);
+
+    return (sine + saw + square + sine_modulated) * amplitude_envelope * volume;
 }
 
 float electric_piano(float frequency, float time, float key_release_time, float volume) {
@@ -161,6 +184,7 @@ void play_note(Note note, snd_pcm_t *handle, int sample_rate) {
         float time = static_cast<float>(i) / sample_rate;
         float lfo_signal = lfo(time, lfo_frequency, lfo_amplitude);
         float modulated_amplitude = (1.0f + lfo_signal);
+        float dry_signal, wet_signal;
 
         switch (note.instrument) {
             case 0: // KICK
@@ -170,10 +194,15 @@ void play_note(Note note, snd_pcm_t *handle, int sample_rate) {
                 buffer[i] = hi_hat(midi_note_to_frequency(note.pitch), time, track_current_volumes[1]);
                 break;
             case 2: // SYNTH
-                buffer[i] = arpeggiator_synth(midi_note_to_frequency(note.pitch), time, track_current_volumes[2]);
+                buffer[i] = synth(midi_note_to_frequency(note.pitch), time, note.release, track_current_volumes[2]);
                 break;
             case 3: // ELECTRIC PIANO
-                buffer[i] = modulated_amplitude * electric_piano(midi_note_to_frequency(note.pitch), time, note.release,track_current_volumes[3]);
+                dry_signal = modulated_amplitude * electric_piano(midi_note_to_frequency(note.pitch), time, note.release,track_current_volumes[3]);
+                wet_signal = delay_buffer[read_ptr];
+                delay_buffer[write_ptr] = dry_signal + wet_signal * feedback;
+                buffer[i] = dry_signal + wet_signal;
+                write_ptr = (write_ptr + 1) % delay_samples;
+                read_ptr = (read_ptr + 1) % delay_samples;
                 break;
             default:
                 buffer[i] = sine_wave(midi_note_to_frequency(note.pitch), time);
