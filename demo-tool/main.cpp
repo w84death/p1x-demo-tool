@@ -291,7 +291,10 @@ int main(int argc, char* argv[]) {
                     pause_playback.store(!pause_playback.load());
                 }else
                 if (key >= 49 && key <= 57) {
-                    toggle_mute_track(key-49);
+                    if (event.xkey.state & ShiftMask) {
+                        set_track_volume(key-49,1.0f);
+                    }else
+                        set_track_volume(key-49,0.0f);
                 }else
                 if (key == XK_Up || key == XK_Down || key == XK_Left || key == XK_Right) {
                     // Arrow key was pressed
@@ -300,7 +303,8 @@ int main(int argc, char* argv[]) {
                         // Arrow + Shift key was pressed
 
                     }
-                }else{
+                }else
+                if (key == XK_Escape){
                     application_running = false;
                     quit_playback = true;
                 }

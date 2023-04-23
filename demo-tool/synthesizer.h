@@ -36,6 +36,7 @@ std::mutex playing_notes_mutex;
 int playing_track;
 bool debug_show_notes = false;
 std::vector<bool> muted_tracks(tracks.size(), false);
+std::vector<float> track_volumes(tracks.size(), 1.0f);
 
 /*
  * -----10--------20--------30--------40--------50--------60--------70-------80
@@ -60,22 +61,22 @@ float white_noise() {
 /*
  * -----10--------20--------30--------40--------50--------60--------70-------80
  */
-float kick(float frequency, float time) {
+float kick(float frequency, float time, float volume) {
     float base_freq = 50.0f; // Base frequency for the kick
     float envelope = std::exp(-4.0f * time); // Exponential decay envelope
     float sine_wave1 = std::sin(2.0f * M_PI * base_freq * time);
     float sine_wave2 = std::sin(2.0f * M_PI * frequency * time);
 
-    return envelope * (sine_wave1 + sine_wave2);
+    return envelope * (sine_wave1 + sine_wave2)*volume;
 }
 
-float hi_hat(float frequency, float time) {
+float hi_hat(float frequency, float time, float volume) {
     float envelope = std::exp(-10.0f * time); // Exponential decay envelope
-    return envelope * white_noise();
+    return envelope * white_noise()*volume;
 }
 
-float arpeggiator_synth(float frequency, float time) {
-    return sine_wave(frequency, time);
+float arpeggiator_synth(float frequency, float time, float volume) {
+    return sine_wave(frequency, time)*volume;
 }
 
 struct ADSR {
@@ -100,7 +101,7 @@ float adsr_envelope(const ADSR &adsr, float time, float key_release_time) {
     }
 }
 
-float electric_piano(float frequency, float time, float key_release_time) {
+float electric_piano(float frequency, float time, float key_release_time, float volume) {
     ADSR envelope = {0.01f, 0.3f, 0.6f, 1.0f, 0.7f};
     float amplitude_envelope = adsr_envelope(envelope, time, key_release_time);
 
@@ -108,7 +109,7 @@ float electric_piano(float frequency, float time, float key_release_time) {
     float sine_wave2 = 0.5f * std::sin(2.0f * M_PI * 2 * frequency * time);
     float sine_wave3 = 0.25f * std::sin(2.0f * M_PI * 4 * frequency * time);
 
-    return amplitude_envelope * (sine_wave1 + sine_wave2 + sine_wave3);
+    return amplitude_envelope * (sine_wave1 + sine_wave2 + sine_wave3)*volume;
 }
 
 
@@ -142,6 +143,12 @@ void toggle_mute_track(int track_index) {
     }
 }
 
+void set_track_volume(int track_index, float volume) {
+    track_volumes[track_index] = volume;
+}
+
+
+
 void play_note(Note note, snd_pcm_t *handle, int sample_rate) {
     int buffer_size = sample_rate * note.duration;
     float buffer[buffer_size];
@@ -153,17 +160,17 @@ void play_note(Note note, snd_pcm_t *handle, int sample_rate) {
 
     for (int i = 0; i < buffer_size; ++i) {
         switch (note.instrument) {
-            case 0:
-                buffer[i] = kick(midi_note_to_frequency(note.pitch), static_cast<float>(i) / sample_rate);
+            case 0: // KICK
+                buffer[i] = kick(midi_note_to_frequency(note.pitch), static_cast<float>(i) / sample_rate,track_volumes[0]);
                 break;
-            case 1:
-                buffer[i] = hi_hat(midi_note_to_frequency(note.pitch), static_cast<float>(i) / sample_rate);
+            case 1: // HI-HAT
+                buffer[i] = hi_hat(midi_note_to_frequency(note.pitch), static_cast<float>(i) / sample_rate,track_volumes[1]);
                 break;
-            case 2:
-                buffer[i] = arpeggiator_synth(midi_note_to_frequency(note.pitch), static_cast<float>(i) / sample_rate);
+            case 2: // SYNTH
+                buffer[i] = arpeggiator_synth(midi_note_to_frequency(note.pitch), static_cast<float>(i) / sample_rate,track_volumes[2]);
                 break;
-            case 3:
-                buffer[i] = electric_piano(midi_note_to_frequency(note.pitch), static_cast<float>(i) / sample_rate, note.release);
+            case 3: // ELECTRIC PIANO
+                buffer[i] = electric_piano(midi_note_to_frequency(note.pitch), static_cast<float>(i) / sample_rate, note.release,track_volumes[3]);
                 break;
             default:
                 buffer[i] = sine_wave(midi_note_to_frequency(note.pitch), static_cast<float>(i) / sample_rate);
@@ -198,14 +205,7 @@ void playback_thread(int track_id, const std::vector<std::vector<Note>> &tracks,
                 is_paused = false;
             }
             if (current_note < tracks[track_id].size()) {
-                if(!muted_tracks[track_id]){
-                    play_note(tracks[track_id][current_note], handle, sample_rate);
-                }else{
-                    Note muted_note = tracks[track_id][current_note];
-                    muted_note.pitch = 0.0f;
-                    muted_note.release = 0.0f;
-                    play_note(muted_note, handle, sample_rate);
-                }
+                play_note(tracks[track_id][current_note], handle, sample_rate);
                 current_note++;
             } else {
                 current_note = 0;
