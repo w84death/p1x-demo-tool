@@ -164,12 +164,10 @@ void play_note(Note note, snd_pcm_t *handle, int sample_rate) {
 
         switch (note.instrument) {
             case 0: // KICK
-                if(note.pitch==0) buffer[i] = 0;
-                else buffer[i] = kick(midi_note_to_frequency(note.pitch), time, track_current_volumes[0]);
+                buffer[i] = kick(midi_note_to_frequency(note.pitch), time, track_current_volumes[0]);
                 break;
             case 1: // HI-HAT
-                if(note.pitch==0) buffer[i] = 0;
-                else buffer[i] = hi_hat(midi_note_to_frequency(note.pitch), time, track_current_volumes[1]);
+                buffer[i] = hi_hat(midi_note_to_frequency(note.pitch), time, track_current_volumes[1]);
                 break;
             case 2: // SYNTH
                 buffer[i] = arpeggiator_synth(midi_note_to_frequency(note.pitch), time, track_current_volumes[2]);
