@@ -35,6 +35,7 @@ std::map<int, Note> currently_playing;
 std::mutex playing_notes_mutex;
 int playing_track;
 bool debug_show_notes = false;
+std::vector<bool> muted_tracks(tracks.size(), false);
 
 /*
  * -----10--------20--------30--------40--------50--------60--------70-------80
@@ -121,7 +122,10 @@ void display_playing_notes() {
             {
                 std::lock_guard<std::mutex> lock(playing_notes_mutex);
                 for (const auto &entry : currently_playing) {
-                    std::cout << "> [" << entry.first << "]: Note " << entry.second.pitch << " (" << entry.second.duration << "," << entry.second.release << ")" ;
+                    if(entry.second.pitch>0)
+                        std::cout << "> [" << entry.first << "]: Note " << entry.second.pitch << " (" << entry.second.duration << "," << entry.second.release << ")" ;
+                    else
+                        std::cout << "> [" << entry.first << "]: ----  " << " (" << entry.second.duration << "," << entry.second.release << ")" ;
                 }
             }
             std::cout << std::endl;
@@ -132,6 +136,11 @@ void display_playing_notes() {
     }
 }
 
+void toggle_mute_track(int track_index) {
+    if (track_index >= 0 && track_index < static_cast<int>(muted_tracks.size())) {
+        muted_tracks[track_index] = !muted_tracks[track_index];
+    }
+}
 
 void play_note(Note note, snd_pcm_t *handle, int sample_rate) {
     int buffer_size = sample_rate * note.duration;
@@ -172,23 +181,31 @@ void play_note(Note note, snd_pcm_t *handle, int sample_rate) {
 /*
  * -----10--------20--------30--------40--------50--------60--------70-------80
  */
-void playback_thread(int track_id, std::vector<Note> &notes, int sample_rate) {
+void playback_thread(int track_id, const std::vector<std::vector<Note>> &tracks, int sample_rate) {
+    if (track_id < 0 || track_id >= static_cast<int>(tracks.size())) {
+        return;
+    }
     snd_pcm_t *handle;
     snd_pcm_open(&handle, "default", SND_PCM_STREAM_PLAYBACK, 0);
     snd_pcm_set_params(handle, SND_PCM_FORMAT_FLOAT, SND_PCM_ACCESS_RW_INTERLEAVED, 1, sample_rate, 1, 100000);
     size_t current_note = 0;
     bool is_paused = false;
     std::thread display_thread(display_playing_notes);
-
     while (!quit_playback) {
         if (!pause_playback) {
             if (is_paused) {
                 snd_pcm_pause(handle, 0);
                 is_paused = false;
             }
-
-            if (current_note < notes.size()) {
-                play_note(notes[current_note], handle, sample_rate);
+            if (current_note < tracks[track_id].size()) {
+                if(!muted_tracks[track_id]){
+                    play_note(tracks[track_id][current_note], handle, sample_rate);
+                }else{
+                    Note muted_note = tracks[track_id][current_note];
+                    muted_note.pitch = 0.0f;
+                    muted_note.release = 0.0f;
+                    play_note(muted_note, handle, sample_rate);
+                }
                 current_note++;
             } else {
                 current_note = 0;
@@ -211,7 +228,7 @@ void playback_thread(int track_id, std::vector<Note> &notes, int sample_rate) {
  */
 void synthStart(){
     for (int i = 0; i < tracks.size(); ++i) {
-        player_threads.emplace_back(playback_thread, i, std::ref(tracks[i]), sample_rate);
+        player_threads.emplace_back(playback_thread, i, std::ref(tracks), sample_rate);
     }
 }
 

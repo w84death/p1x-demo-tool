@@ -290,6 +290,9 @@ int main(int argc, char* argv[]) {
                 if (key == XK_space) {
                     pause_playback.store(!pause_playback.load());
                 }else
+                if (key >= 49 && key <= 57) {
+                    toggle_mute_track(key-49);
+                }else
                 if (key == XK_Up || key == XK_Down || key == XK_Left || key == XK_Right) {
                     // Arrow key was pressed
 
