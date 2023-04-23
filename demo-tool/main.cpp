@@ -12,20 +12,14 @@
 #include <iostream>
 #include <string>
 #include <chrono>
-#include <thread>
 #include <math.h>
 #include <cstdio>
-#include <random>
-#include <vector>
-#include <atomic>
-#include <cmath>
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <GL/glew.h>
 #include <GL/gl.h>
 #include <GL/glx.h>
-#include <alsa/asoundlib.h>
-#include "music.h"
+#include "synthesizer.h"
 #define GLT_IMPLEMENTATION
 #include "gltext.h" /* https://github.com/vallentin/glText */
 const char* fragment_source =
@@ -54,65 +48,11 @@ float resolution_scale = .5f;
 bool application_running = true;
 bool debug_show_stats = false;
 char stats[512];
-std::atomic<bool> pause_playback{false};
-std::atomic<bool> quit_playback{false};
 XEvent event;
 
 /*
  * -----10--------20--------30--------40--------50--------60--------70-------80
  */
-float sine_wave(float frequency, float time) {
-    const float PI = 3.14159265;
-    return sin(2 * PI * frequency * time);
-}
-
-float midi_note_to_frequency(int note) {
-    return 440.0f * pow(2.0f, (note - 69) / 12.0f);
-}
-
-void play_note(Note note, snd_pcm_t *handle, int sample_rate) {
-    int buffer_size = sample_rate * note.duration;
-    float buffer[buffer_size];
-
-    for (int i = 0; i < buffer_size; ++i) {
-        buffer[i] = sine_wave(midi_note_to_frequency(note.pitch), static_cast<float>(i) / sample_rate);
-    }
-
-    snd_pcm_writei(handle, buffer, buffer_size);
-}
-
-void playback_thread(int track_id, std::vector<Note> &notes, int sample_rate) {
-    snd_pcm_t *handle;
-    snd_pcm_open(&handle, "default", SND_PCM_STREAM_PLAYBACK, 0);
-    snd_pcm_set_params(handle, SND_PCM_FORMAT_FLOAT, SND_PCM_ACCESS_RW_INTERLEAVED, 1, sample_rate, 1, 100000);
-
-    size_t current_note = 0;
-    bool is_paused = false;
-
-    while (!quit_playback) {
-        if (!pause_playback) {
-            if (is_paused) {
-                snd_pcm_pause(handle, 0);
-                is_paused = false;
-            }
-
-            if (current_note < notes.size()) {
-                play_note(notes[current_note], handle, sample_rate);
-                current_note++;
-            } else {
-                current_note = 0;
-            }
-        } else {
-            if (!is_paused) {
-                snd_pcm_pause(handle, 1);
-                is_paused = true;
-            }
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        }
-    }
-
-    snd_pcm_close(handle);
-}
 
 /*
  * -----10--------20--------30--------40--------50--------60--------70-------80
@@ -185,15 +125,11 @@ int main(int argc, char* argv[]) {
     }
 
     std::cout << "> Initializing engine with:\n  - window resolution " << window_width << "x" << window_height << "\n  - internal rendering resolution " << window_width*resolution_scale << "x" << window_height*resolution_scale << " (scale " << resolution_scale << ")."<< std::endl;
-
 /*
+ *
  * -----10--------20--------30--------40--------50--------60--------70-------80
  */
-    int sample_rate = 44100;
-    std::vector<std::thread> player_threads;
-    for (int i = 0; i < tracks.size(); ++i) {
-        player_threads.emplace_back(playback_thread, i, std::ref(tracks[i]), sample_rate);
-    }
+    synthStart();
 
 /*
  * -----10--------20--------30--------40--------50--------60--------70-------80
@@ -371,9 +307,7 @@ int main(int argc, char* argv[]) {
 /*
  * -----10--------20--------30--------40--------50--------60--------70-------80
  */
-    for (auto &t : player_threads) {
-        t.join();
-    }
+    synthQuit();
     gltDeleteText(textStats);
     gltTerminate();
     glDeleteVertexArrays(1, &VAO);
