@@ -57,11 +57,15 @@ float white_noise() {
     return dist(gen);
 }
 
+float lfo(float time, float frequency, float amplitude) {
+    return amplitude * std::sin(2 * M_PI * frequency * time);
+}
+
 /*
  * -----10--------20--------30--------40--------50--------60--------70-------80
  */
 float kick(float frequency, float time, float volume) {
-    float base_freq = 50.0f; // Base frequency for the kick
+    float base_freq = 70.0f; // Base frequency for the kick
     float envelope = std::exp(-4.0f * time); // Exponential decay envelope
     float sine_wave1 = std::sin(2.0f * M_PI * base_freq * time);
     float sine_wave2 = std::sin(2.0f * M_PI * frequency * time);
@@ -70,12 +74,12 @@ float kick(float frequency, float time, float volume) {
 }
 
 float hi_hat(float frequency, float time, float volume) {
-    float envelope = std::exp(-10.0f * time); // Exponential decay envelope
+    float envelope = std::exp(-14.0f * time); // Exponential decay envelope
     return envelope * white_noise()*volume;
 }
 
 float arpeggiator_synth(float frequency, float time, float volume) {
-    return sine_wave(frequency, time)*volume;
+    return (sine_wave(frequency, time) + sine_wave(frequency+5.0f, time)*.25) *volume;
 }
 
 struct ADSR {
@@ -144,33 +148,41 @@ void play_note(Note note, snd_pcm_t *handle, int sample_rate) {
     int buffer_size = sample_rate * note.duration;
     float buffer[buffer_size];
 
-     {
+    float lfo_frequency = 10.0f; // LFO frequency in Hz
+    float lfo_amplitude = 0.25f; // LFO amplitude (0.0 to 1.0)
+
+    if(debug_show_notes){
         std::lock_guard<std::mutex> lock(playing_notes_mutex);
         currently_playing[note.instrument] = note;
     }
 
+
     for (int i = 0; i < buffer_size; ++i) {
+        float time = static_cast<float>(i) / sample_rate;
+        float lfo_signal = lfo(time, lfo_frequency, lfo_amplitude);
+        float modulated_amplitude = (1.0f + lfo_signal);
+
         switch (note.instrument) {
             case 0: // KICK
-                buffer[i] = kick(midi_note_to_frequency(note.pitch), static_cast<float>(i) / sample_rate,track_current_volumes[0]);
+                buffer[i] = kick(midi_note_to_frequency(note.pitch), time, track_current_volumes[0]);
                 break;
             case 1: // HI-HAT
-                buffer[i] = hi_hat(midi_note_to_frequency(note.pitch), static_cast<float>(i) / sample_rate,track_current_volumes[1]);
+                buffer[i] = hi_hat(midi_note_to_frequency(note.pitch), time, track_current_volumes[1]);
                 break;
             case 2: // SYNTH
-                buffer[i] = arpeggiator_synth(midi_note_to_frequency(note.pitch), static_cast<float>(i) / sample_rate,track_current_volumes[2]);
+                buffer[i] = arpeggiator_synth(midi_note_to_frequency(note.pitch), time, track_current_volumes[2]);
                 break;
             case 3: // ELECTRIC PIANO
-                buffer[i] = electric_piano(midi_note_to_frequency(note.pitch), static_cast<float>(i) / sample_rate, note.release,track_current_volumes[3]);
+                buffer[i] = modulated_amplitude * electric_piano(midi_note_to_frequency(note.pitch), time, note.release,track_current_volumes[3]);
                 break;
             default:
-                buffer[i] = sine_wave(midi_note_to_frequency(note.pitch), static_cast<float>(i) / sample_rate);
+                buffer[i] = sine_wave(midi_note_to_frequency(note.pitch), time);
         }
     }
 
     snd_pcm_writei(handle, buffer, buffer_size);
 
-    {
+    if(debug_show_notes){
         std::lock_guard<std::mutex> lock(playing_notes_mutex);
         currently_playing.erase(note.instrument);
     }
@@ -180,9 +192,6 @@ void play_note(Note note, snd_pcm_t *handle, int sample_rate) {
  * -----10--------20--------30--------40--------50--------60--------70-------80
  */
 void playback_thread(int track_id, const std::vector<std::vector<Note>> &tracks, int sample_rate) {
-    if (track_id < 0 || track_id >= static_cast<int>(tracks.size())) {
-        return;
-    }
     snd_pcm_t *handle;
     snd_pcm_open(&handle, "default", SND_PCM_STREAM_PLAYBACK, 0);
     snd_pcm_set_params(handle, SND_PCM_FORMAT_FLOAT, SND_PCM_ACCESS_RW_INTERLEAVED, 1, sample_rate, 1, 100000);

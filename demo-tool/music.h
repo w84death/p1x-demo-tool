@@ -20,7 +20,7 @@ struct Note {
     float release;  // key release time in seconds
 };
 
-std::vector<float> track_volumes = {1.0f, 0.25f, .6f, 0.8f};
+std::vector<float> track_volumes = {1.0f, 0.1f, .3f, 0.3f};
 
 std::vector<Note> generate_arpeggiator_sequence(int root_note, float duration, int instrument) {
     std::vector<Note> arpeggiator_sequence;
@@ -33,121 +33,61 @@ std::vector<Note> generate_arpeggiator_sequence(int root_note, float duration, i
     return arpeggiator_sequence;
 }
 
-static std::vector<std::vector<Note>> tracks = {
-    // Kick drum track
+std::vector<std::vector<Note>> tracks = {
+    // Kick track
     {
         // Intro
-        {36, 0.5f, 0, 0.0f},
-        {0, 0.5f, 0, 0.0f},
-        {36, 0.5f, 0, 0.0f},
-        {0, 0.5f, 0, 0.0f},
+        {0, 0.25f, 0, 0.0f},
 
-        // Section 1 (repeat twice)
-        {36, 0.5f, 0, 0.0f},
-        {0, 0.5f, 0, 0.0f},
-        {36, 0.5f, 0, 0.0f},
-        {0, 0.5f, 0, 0.0f},
-        {36, 0.5f, 0, 0.0f},
-        {0, 0.5f, 0, 0.0f},
-        {36, 0.5f, 0, 0.0f},
-        {0, 0.5f, 0, 0.0f},
-
-        // Section 2 (repeat twice)
-        {36, 0.5f, 0, 0.0f},
-        {0, 0.5f, 0, 0.0f},
-        {36, 0.5f, 0, 0.0f},
-        {0, 0.5f, 0, 0.0f},
-        {36, 0.5f, 0, 0.0f},
-        {0, 0.5f, 0, 0.0f},
-        {36, 0.5f, 0, 0.0f},
-        {0, 0.5f, 0, 0.0f},
+        // Main body (repeat 4 times)
+        {0, 0.25f, 0, 1.0f}, {0, 0.25f, 0, 0.0f},
+        {0, 0.25f, 0, 1.0f}, {0, 0.25f, 0, 0.0f},
+        {0, 0.25f, 0, 1.0f}, {0, 0.25f, 0, 0.0f},
+        {0, 0.25f, 0, 1.0f}, {0, 0.25f, 0, 0.0f},
 
         // Outro
-        {36, 0.5f, 0, 0.0f},
-        {0, 0.5f, 0, 0.0f},
-        {0, 0.5f, 0, 0.0f},
-        {0, 0.5f, 0, 0.0f}
+        {0, 1.0f, 0, 0.0f},
     },
     // Hi-hat track
     {
         // Intro
-        {0, 0.5f, 1, 0.0f},
-        {42, 0.5f, 1, 0.1f},
-        {0, 0.5f, 1, 0.0f},
-        {42, 0.5f, 1, 0.1f},
+        {42, 0.25f, 1, 0.0f},
 
-        // Section 1 (repeat twice)
-        {0, 0.5f, 1, 0.0f},
-        {42, 0.5f, 1, 0.1f},
-        {0, 0.5f, 1, 0.0f},
-        {42, 0.5f, 1, 0.1f},
-        {0, 0.5f, 1, 0.0f},
-        {42, 0.5f, 1, 0.1f},
-        {0, 0.5f, 1, 0.0f},
-        {42, 0.5f, 1, 0.1f},
-
-        // Section 2 (repeat twice)
-        {0, 0.5f, 1, 0.0f},
-        {42, 0.5f, 1, 0.1f},
-        {0, 0.5f, 1, 0.0f},
-        {42, 0.5f, 1, 0.1f},
-        {0, 0.5f, 1, 0.0f},
-        {42, 0.5f, 1, 0.1f},
-        {0, 0.5f, 1, 0.0f},
-        {42, 0.5f, 1, 0.1f},
+        // Main body (repeat 4 times)
+        {42, 0.125f, 1, 0.8f}, {42, 0.125f, 1, 0.0f},
+        {42, 0.125f, 1, 0.8f}, {42, 0.125f, 1, 0.0f},
+        {42, 0.125f, 1, 0.8f}, {42, 0.125f, 1, 0.0f},
+        {42, 0.125f, 1, 0.8f}, {42, 0.125f, 1, 0.0f},
 
         // Outro
-        {0, 0.5f, 1, 0.0f},
-        {42, 0.5f, 1, 0.1f},
-        {0, 0.5f, 1, 0.0f},
-        {0, 0.5f, 1, 0.0f}
+        {42, 1.0f, 1, 0.0f},
     },
     // Arpeggiator synth track
     {
         // Intro
-        {0, 2.0f, 2, 0.0f},
+        {60, 2.0f, 2, 0.8f},
 
-        // Section 1 (repeat twice)
-        {60, 0.5f, 2, 0.8f},
-        {64, 0.5f, 2, 0.8f},
-        {67, 0.5f, 2, 0.8f},
-        {72, 0.5f, 2, 0.8f},
-        {60, 0.5f, 2, 0.8f},
-        {64, 0.5f, 2, 0.8f},
-        {67, 0.5f, 2, 0.8f},
-        {72, 0.5f, 2, 0.8f},
-
-        // Section 2 (repeat twice)
-        {72, 0.5f, 2, 0.8f},
-        {67, 0.5f, 2, 0.8f},
-        {64, 0.5f, 2, 0.8f},
-        {60, 0.5f, 2, 0.8f},
-        {72, 0.5f, 2, 0.8f},
-        {67, 0.5f, 2, 0.8f},
-        {64, 0.5f, 2, 0.8f},
-        {60, 0.5f, 2, 0.8f},
+        // Main body (repeat 4 times)
+        {60, 0.5f, 2, 0.8f}, {64, 0.5f, 2, 0.8f},
+        {67, 0.5f, 2, 0.8f}, {72, 0.5f, 2, 0.8f},
+        {67, 0.5f, 2, 0.8f}, {64, 0.5f, 2, 0.8f},
+        {60, 0.5f, 2, 0.8f}, {64, 0.5f, 2, 0.8f},
 
         // Outro
-        {60, 2.0f, 2, 0.8f}
+        {72, 2.0f, 2, 0.8f},
     },
     // Electric piano track
     {
         // Intro
-        {72, 2.0f, 3, 0.9f},
+        {72, 2.0f, 3, 0.8f},
 
-        // Section 1 (repeat twice)
-        {72, 1.0f, 3, 0.9f},
-        {76, 1.0f, 3, 0.9f},
-        {79, 1.0f, 3, 0.9f},
-        {72, 1.0f, 3,0.9f},
-
-        // Section 2 (repeat twice)
-        {72, 1.0f, 3, 0.9f},
-        {76, 1.0f, 3, 0.9f},
-        {79, 1.0f, 3, 0.9f},
-        {84, 1.0f, 3, 0.9f},
+        // Main body (repeat 4 times)
+        {72, 1.0f, 3, 0.8f}, {76, 1.0f, 3, 0.8f},
+        {79, 1.0f, 3, 0.8f}, {72, 1.0f, 3, 0.8f},
+        {76, 1.0f, 3, 0.8f}, {79, 1.0f, 3, 0.8f},
+        {72, 1.0f, 3, 0.8f}, {76, 1.0f, 3, 0.8f},
 
         // Outro
-        {72, 2.0f, 3, 0.9f}
-    }
+        {79, 2.0f, 3, 0.8f},
+    },
 };
