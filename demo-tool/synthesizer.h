@@ -36,8 +36,7 @@ std::mutex playing_notes_mutex;
 int playing_track;
 bool debug_show_notes = false;
 std::vector<bool> muted_tracks(tracks.size(), false);
-std::vector<float> track_volumes(tracks.size(), 1.0f);
-
+std::vector<float> track_current_volumes = track_volumes;
 /*
  * -----10--------20--------30--------40--------50--------60--------70-------80
  */
@@ -137,17 +136,9 @@ void display_playing_notes() {
     }
 }
 
-void toggle_mute_track(int track_index) {
-    if (track_index >= 0 && track_index < static_cast<int>(muted_tracks.size())) {
-        muted_tracks[track_index] = !muted_tracks[track_index];
-    }
-}
-
 void set_track_volume(int track_index, float volume) {
-    track_volumes[track_index] = volume;
+    track_current_volumes[track_index] = volume;
 }
-
-
 
 void play_note(Note note, snd_pcm_t *handle, int sample_rate) {
     int buffer_size = sample_rate * note.duration;
@@ -161,16 +152,16 @@ void play_note(Note note, snd_pcm_t *handle, int sample_rate) {
     for (int i = 0; i < buffer_size; ++i) {
         switch (note.instrument) {
             case 0: // KICK
-                buffer[i] = kick(midi_note_to_frequency(note.pitch), static_cast<float>(i) / sample_rate,track_volumes[0]);
+                buffer[i] = kick(midi_note_to_frequency(note.pitch), static_cast<float>(i) / sample_rate,track_current_volumes[0]);
                 break;
             case 1: // HI-HAT
-                buffer[i] = hi_hat(midi_note_to_frequency(note.pitch), static_cast<float>(i) / sample_rate,track_volumes[1]);
+                buffer[i] = hi_hat(midi_note_to_frequency(note.pitch), static_cast<float>(i) / sample_rate,track_current_volumes[1]);
                 break;
             case 2: // SYNTH
-                buffer[i] = arpeggiator_synth(midi_note_to_frequency(note.pitch), static_cast<float>(i) / sample_rate,track_volumes[2]);
+                buffer[i] = arpeggiator_synth(midi_note_to_frequency(note.pitch), static_cast<float>(i) / sample_rate,track_current_volumes[2]);
                 break;
             case 3: // ELECTRIC PIANO
-                buffer[i] = electric_piano(midi_note_to_frequency(note.pitch), static_cast<float>(i) / sample_rate, note.release,track_volumes[3]);
+                buffer[i] = electric_piano(midi_note_to_frequency(note.pitch), static_cast<float>(i) / sample_rate, note.release,track_current_volumes[3]);
                 break;
             default:
                 buffer[i] = sine_wave(midi_note_to_frequency(note.pitch), static_cast<float>(i) / sample_rate);

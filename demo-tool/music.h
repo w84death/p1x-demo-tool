@@ -20,6 +20,7 @@ struct Note {
     float release;  // key release time in seconds
 };
 
+std::vector<float> track_volumes = {1.0f, 0.25f, .6f, 0.8f};
 
 std::vector<Note> generate_arpeggiator_sequence(int root_note, float duration, int instrument) {
     std::vector<Note> arpeggiator_sequence;

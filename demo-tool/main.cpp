@@ -292,7 +292,7 @@ int main(int argc, char* argv[]) {
                 }else
                 if (key >= 49 && key <= 57) {
                     if (event.xkey.state & ShiftMask) {
-                        set_track_volume(key-49,1.0f);
+                        set_track_volume(key-49,track_volumes[key-49]);
                     }else
                         set_track_volume(key-49,0.0f);
                 }else
