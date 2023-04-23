@@ -115,6 +115,7 @@ int main(int argc, char* argv[]) {
             resolution_scale = std::stof(argv[++i]);
         } else if (arg == "--stats") {
             debug_show_stats = true;
+            debug_show_notes = true;
         } else if (arg == "--window_fullscreen") {
             window_fullscreen = true;
         } else {

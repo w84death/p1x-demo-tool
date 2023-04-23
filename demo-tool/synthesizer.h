@@ -15,7 +15,12 @@
 #include <cmath>
 #include <thread>
 #include <chrono>
+#include <iostream>
+#include <map>
+#include <mutex>
 #include <alsa/asoundlib.h>
+#include <iostream>
+#include <map>
 #include "music.h"
 
 /*
@@ -26,6 +31,10 @@ std::atomic<bool> pause_playback{false};
 std::atomic<bool> quit_playback{false};
 std::vector<std::thread> player_threads;
 int sample_rate = 44100;
+std::map<int, Note> currently_playing;
+std::mutex playing_notes_mutex;
+int playing_track;
+bool debug_show_notes = false;
 
 /*
  * -----10--------20--------30--------40--------50--------60--------70-------80
@@ -105,9 +114,33 @@ float electric_piano(float frequency, float time, float key_release_time) {
 /*
  * -----10--------20--------30--------40--------50--------60--------70-------80
  */
+void display_playing_notes() {
+    while (!quit_playback.load()) {
+        if(!debug_show_notes) break;
+        if (!pause_playback.load()) {
+            {
+                std::lock_guard<std::mutex> lock(playing_notes_mutex);
+                for (const auto &entry : currently_playing) {
+                    std::cout << "> [" << entry.first << "]: Note " << entry.second.pitch << " (" << entry.second.duration << "," << entry.second.release << ")" ;
+                }
+            }
+            std::cout << std::endl;
+        }else{
+            std::this_thread::sleep_for(std::chrono::milliseconds(100)); // Adjust the sleep duration as needed
+        }
+
+    }
+}
+
+
 void play_note(Note note, snd_pcm_t *handle, int sample_rate) {
     int buffer_size = sample_rate * note.duration;
     float buffer[buffer_size];
+
+     {
+        std::lock_guard<std::mutex> lock(playing_notes_mutex);
+        currently_playing[note.instrument] = note;
+    }
 
     for (int i = 0; i < buffer_size; ++i) {
         switch (note.instrument) {
@@ -129,6 +162,11 @@ void play_note(Note note, snd_pcm_t *handle, int sample_rate) {
     }
 
     snd_pcm_writei(handle, buffer, buffer_size);
+
+    {
+        std::lock_guard<std::mutex> lock(playing_notes_mutex);
+        currently_playing.erase(note.instrument);
+    }
 }
 
 /*
@@ -138,9 +176,9 @@ void playback_thread(int track_id, std::vector<Note> &notes, int sample_rate) {
     snd_pcm_t *handle;
     snd_pcm_open(&handle, "default", SND_PCM_STREAM_PLAYBACK, 0);
     snd_pcm_set_params(handle, SND_PCM_FORMAT_FLOAT, SND_PCM_ACCESS_RW_INTERLEAVED, 1, sample_rate, 1, 100000);
-
     size_t current_note = 0;
     bool is_paused = false;
+    std::thread display_thread(display_playing_notes);
 
     while (!quit_playback) {
         if (!pause_playback) {
@@ -165,6 +203,7 @@ void playback_thread(int track_id, std::vector<Note> &notes, int sample_rate) {
     }
 
     snd_pcm_close(handle);
+    display_thread.join();
 }
 
 /*
@@ -183,4 +222,5 @@ void synthQuit(){
     for (auto &t : player_threads) {
         t.join();
     }
+
 }
