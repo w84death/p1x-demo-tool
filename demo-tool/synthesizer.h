@@ -70,7 +70,7 @@ float kick(float frequency, float time, float volume) {
     float sine_wave1 = std::sin(2.0f * M_PI * base_freq * time);
     float sine_wave2 = std::sin(2.0f * M_PI * frequency * time);
 
-    return envelope * (sine_wave1 + sine_wave2)*volume;
+    return envelope * (sine_wave1 + sine_wave2) * volume;
 }
 
 float hi_hat(float frequency, float time, float volume) {
@@ -164,10 +164,12 @@ void play_note(Note note, snd_pcm_t *handle, int sample_rate) {
 
         switch (note.instrument) {
             case 0: // KICK
-                buffer[i] = kick(midi_note_to_frequency(note.pitch), time, track_current_volumes[0]);
+                if(note.pitch==0) buffer[i] = 0;
+                else buffer[i] = kick(midi_note_to_frequency(note.pitch), time, track_current_volumes[0]);
                 break;
             case 1: // HI-HAT
-                buffer[i] = hi_hat(midi_note_to_frequency(note.pitch), time, track_current_volumes[1]);
+                if(note.pitch==0) buffer[i] = 0;
+                else buffer[i] = hi_hat(midi_note_to_frequency(note.pitch), time, track_current_volumes[1]);
                 break;
             case 2: // SYNTH
                 buffer[i] = arpeggiator_synth(midi_note_to_frequency(note.pitch), time, track_current_volumes[2]);
