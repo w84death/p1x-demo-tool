@@ -36,7 +36,7 @@ float feedback = 0.5f; // Feedback amount (0.0 to 1.0)
 
 std::vector<Pattern> patterns = {
     {   // Pattern 0: Kick pattern
-        {0, 0.25f, 1.0f}, {0, 0.25f, 0.0f}
+        {0, 0.25f, 1.0f}, {0, 0.25f, 0.0f}, {0, 0.25f, 0.0f}, {0, 0.25f, 0.0f}
     },
     {   // Pattern 1: Hi-hat pattern
         {42, 0.125f, 0.8f}, {42, 0.125f, 0.0f}
@@ -49,20 +49,23 @@ std::vector<Pattern> patterns = {
         {72, 0.5f, 0.8f}, {76, 0.5f, 0.8f}, {79, 0.5f, 0.8f}, {77, 0.5f, 0.8f},
         {81, 0.5f, 0.8f}, {84, 0.5f, 0.8f}, {79, 0.5f, 0.8f}, {83, 0.5f, 0.8f},
         {86, 0.5f, 0.8f}, {72, 0.5f, 0.8f}, {76, 0.5f, 0.8f}, {79, 0.5f, 0.8f}
+    },
+    {   // 4: pause
+        {0,0.25f,0.0f}
     }
 };
 
 std::vector<Track> tracks = {
     {   // Track 0: Kick track
-        {0, 0, 0, 0}, 0, 1.0f, false
+        {0, 0}, 0, 1.0f, false
     },
     {   // Track 1: Hi-hat track
-        {1, 1, 1, 1}, 1, 0.1f, false
+        {4,4,4,4, 1, 1, 1, 1}, 1, 0.1f, false
     },
     {   // Track 2: Synth
-        {2}, 2, 0.2f, false
+        {4,4,4,4, 2}, 2, 0.2f, false
     },
     {   // Track 3: Electric Piano
-        {3}, 3, 0.3f, false
+        {4,4,4,4, 3}, 3, 0.3f, false
     }
 };
