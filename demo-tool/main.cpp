@@ -115,7 +115,6 @@ int main(int argc, char* argv[]) {
             resolution_scale = std::stof(argv[++i]);
         } else if (arg == "--stats") {
             debug_show_stats = true;
-            debug_show_notes = true;
         } else if (arg == "--window_fullscreen") {
             window_fullscreen = true;
         } else {
@@ -292,9 +291,9 @@ int main(int argc, char* argv[]) {
                 }else
                 if (key >= 49 && key <= 57) {
                     if (event.xkey.state & ShiftMask) {
-                        set_track_volume(key-49,track_volumes[key-49]);
+                        toggle_track_muted(key-49,false);
                     }else
-                        set_track_volume(key-49,0.0f);
+                        toggle_track_muted(key-49,true);
                 }else
                 if (key == XK_Up || key == XK_Down || key == XK_Left || key == XK_Right) {
                     // Arrow key was pressed
