@@ -57,27 +57,19 @@ PFNGLUNIFORM2FVPROC glUniform2fv = NULL;
  * -----10--------20--------30--------40--------50--------60--------70-------80
  */
 
-
-const char* vertexShaderSource = "attribute vec2 position;"
+const char* vertexShaderSource =
+"attribute vec2 position;"
 "varying vec2 TexCoords;"
 "uniform vec2 u_resolution;"
 "void main() {"
 "  gl_Position = vec4(position, 0.0, 1.0);"
 "  float aspectRatio = u_resolution.x / u_resolution.y;"
-"  vec2 centeredTexCoords = (position - 0.5) * 2.0;"
-"  TexCoords = vec2(centeredTexCoords.x * aspectRatio, centeredTexCoords.y);"
+"  TexCoords = vec2(position.x * aspectRatio, position.y);"
 "}";
 
-const char* fragmentShaderSource = "varying vec2 TexCoords;"
-"uniform float u_time;"
-"void main() {"
-"  float dist = length(TexCoords);"
-"  float circle = step(0.5, dist);"
-"  float r = 0.5 * (1.0 + sin(u_time));"
-"  vec4 color1 = vec4(r, 0.0, 1.0 - r, 1.0);"
-"  vec4 color2 = vec4(1.0 - r, 1.0, 1.0 - r, 1.0);"
-"  gl_FragColor = mix(color1, color2, circle);"
-"}";
+const char* fragmentShaderSource =
+#include "shader.glsl"
+;
 
 
 /*
@@ -205,11 +197,9 @@ int main() {
 
     clock_gettime(CLOCK_MONOTONIC, &endTime);
 
-    frameTimeNanoseconds = (endTime.tv_sec - startTime.tv_sec) * 1000000000L + (endTime.tv_nsec - startTime.tv_nsec);
-    frameTimeMilliseconds = frameTimeNanoseconds / 1000000.0;
-
-    // Print frame time
-    printf("Frame time: %ld ns (%.2f ms)\n", frameTimeNanoseconds, frameTimeMilliseconds);
+    // frameTimeNanoseconds = (endTime.tv_sec - startTime.tv_sec) * 1000000000L + (endTime.tv_nsec - startTime.tv_nsec);
+    // frameTimeMilliseconds = frameTimeNanoseconds / 1000000.0;
+    // printf("Frame time: %ld ns (%.2f ms)\n", frameTimeNanoseconds, frameTimeMilliseconds);
 
    }
 
