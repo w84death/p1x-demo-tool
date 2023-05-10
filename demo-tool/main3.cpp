@@ -59,26 +59,36 @@ PFNGLUNIFORM2FVPROC glUniform2fv = NULL;
 
 
 const char* vertexShaderSource = "attribute vec2 position;"
+"varying vec2 TexCoords;"
+"uniform vec2 u_resolution;"
 "void main() {"
 "  gl_Position = vec4(position, 0.0, 1.0);"
+"  float aspectRatio = u_resolution.x / u_resolution.y;"
+"  vec2 centeredTexCoords = (position - 0.5) * 2.0;"
+"  TexCoords = vec2(centeredTexCoords.x * aspectRatio, centeredTexCoords.y);"
 "}";
-const char* fragmentShaderSource =
+
+const char* fragmentShaderSource = "varying vec2 TexCoords;"
 "uniform float u_time;"
 "void main() {"
+"  float dist = length(TexCoords);"
+"  float circle = step(0.5, dist);"
 "  float r = 0.5 * (1.0 + sin(u_time));"
-"  gl_FragColor = vec4(r, 0.0, 1.0 - r, 1.0);"
+"  vec4 color1 = vec4(r, 0.0, 1.0 - r, 1.0);"
+"  vec4 color2 = vec4(1.0 - r, 1.0, 1.0 - r, 1.0);"
+"  gl_FragColor = mix(color1, color2, circle);"
 "}";
+
 
 /*
  * -----10--------20--------30--------40--------50--------60--------70-------80
  */
 
 char demo_name[32] = "CODENAME: SHADER C1TY";
-float demo_time = 0.0f;
 const float demo_length = 60.0f;
 bool application_running = true;
 
-int window_width = 1280, window_height = 720;
+int window_width = 1280/2, window_height = 720/2;
 
 int main() {
   Display *display = XOpenDisplay(NULL);
@@ -146,7 +156,7 @@ int main() {
   struct timespec startTime, endTime,  initialTime;
   clock_gettime(CLOCK_MONOTONIC, &initialTime);
   long frameTimeNanoseconds;
-  double frameTimeMilliseconds,  elapsedTime;
+  double frameTimeMilliseconds,  demo_time;
   XEvent event;
   float resolution[2] = {static_cast<float>(window_width), static_cast<float>(window_height)};
 
@@ -169,7 +179,7 @@ int main() {
      }
 
     clock_gettime(CLOCK_MONOTONIC, &startTime);
-    elapsedTime = (endTime.tv_sec - initialTime.tv_sec) + (endTime.tv_nsec - initialTime.tv_nsec) / 1000000000.0;
+    demo_time = (endTime.tv_sec - initialTime.tv_sec) + (endTime.tv_nsec - initialTime.tv_nsec) / 1000000000.0;
 
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
@@ -177,7 +187,7 @@ int main() {
     glUseProgram(shaderProgram);
 
     GLint timeUniformLocation = glGetUniformLocation(shaderProgram, "u_time");
-    glUniform1f(timeUniformLocation, elapsedTime);
+    glUniform1f(timeUniformLocation, demo_time);
 
     GLint resolutionUniformLocation = glGetUniformLocation(shaderProgram, "u_resolution");
     glUniform2fv(resolutionUniformLocation, 1, resolution);
