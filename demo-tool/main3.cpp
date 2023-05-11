@@ -79,28 +79,75 @@ const char* fragmentShaderSource =
 char demo_name[32] = "CODENAME: SHADER C1TY";
 const double demo_length = 30.0f;
 bool demo_running = true;
-
+bool window_fullscreen = false;
+float resolution_scale = 1.0f;
+bool application_running = true;
+bool debug_show_stats = false;
 int window_width = 1280/2, window_height = 720/2;
 
-int main() {
+
+/*
+ * -----10--------20--------30--------40--------50--------60--------70-------80
+ */
+void print_help() {
+    std::cout << "Usage: ./demo [options]\n\n"
+              << "Options:\n"
+              << "  --width <value>           Set window width\n"
+              << "  --height <value>          Set window height\n"
+              << "  --resolution-scale <value> Set resolution scale\n"
+              << "  --stats                   Show statistics\n"
+              << "  --window-fullscreen       Enable fullscreen mode\n"
+              << "  --help                    Display this help message\n"
+              << std::endl;
+}
+
+/*
+ * -----10--------20--------30--------40--------50--------60--------70-------80
+ */
+int main(int argc, char* argv[]) {
+
+    std::cout << "P1X DEMO TOOL V3 by w84death^P1X // (c) 2023.05\n"<< std::endl;
+    std::cout << "DEVELOPMENT VERSION. BUGS ARE EXPECTED. CTRL+C TO KILL THE DEMO.\n"<< std::endl;
+
+    for (int i = 1; i < argc; ++i) {
+        std::string arg = argv[i];
+
+        if (arg == "--help") {
+            print_help();
+            return 0;
+        } else if (arg == "--width" && i + 1 < argc) {
+            window_width = std::stof(argv[++i]);
+        } else if (arg == "--height" && i + 1 < argc) {
+            window_height = std::stof(argv[++i]);
+        } else if (arg == "--resolution-scale" && i + 1 < argc) {
+            resolution_scale = std::stof(argv[++i]);
+        } else if (arg == "--stats") {
+            debug_show_stats = true;
+        } else if (arg == "--window-fullscreen") {
+            window_fullscreen = true;
+        } else {
+            std::cout << "> Wrong argument: " << arg << std::endl;
+            print_help();
+            return 0;
+        }
+    }
+
+    std::cout << "> Initializing engine with:\n  - window resolution " << window_width << "x" << window_height << "\n  - internal rendering resolution " << window_width*resolution_scale << "x" << window_height*resolution_scale << " (scale " << resolution_scale << ")."<< std::endl;
+/*
+ *
+ * -----10--------20--------30--------40--------50--------60--------70-------80
+ */
+
   Display *display = XOpenDisplay(NULL);
   int screen = DefaultScreen(display);
   Window rootWindow = RootWindow(display, screen);
-
-  int visualAttr[] = {
-      GLX_RGBA,
-      GLX_DOUBLEBUFFER,
-      GLX_DEPTH_SIZE,     24,
-      GLX_STENCIL_SIZE,   8,
-      None
-  };
+  int visualAttr[] = {GLX_RGBA,GLX_DEPTH_SIZE, 24,GLX_DOUBLEBUFFER,None};
   XVisualInfo* visualInfo = glXChooseVisual(display, screen, visualAttr);
-  if (visualInfo == NULL) {
-      fprintf(stderr, "No suitable visual found\n");
-      return -1;
-  }
-
-  Window window = XCreateWindow(display, rootWindow, 10, 10, window_width, window_height, 0, visualInfo->depth, InputOutput, visualInfo->visual, 0, NULL);
+  Colormap colormap = XCreateColormap(display, rootWindow, visualInfo->visual, AllocNone);
+  XSetWindowAttributes window_attribs;
+  window_attribs.colormap = colormap;
+  window_attribs.event_mask = ExposureMask | KeyPressMask;
+  Window window = XCreateWindow(display, rootWindow, 0, 0, window_width, window_height, 0, visualInfo->depth, InputOutput, visualInfo->visual, CWColormap | CWEventMask, &window_attribs);
   XMapWindow(display, window);
   XFlush(display);
 
