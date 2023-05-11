@@ -289,10 +289,10 @@ int main(int argc, char* argv[]) {
   /*
    * ---10--------20--------30--------40--------50--------60--------70-------80
    */
+  synthQuit();
   glXDestroyContext(display, glxContext);
   XDestroyWindow(display, window);
   XCloseDisplay(display);
-
 
   return 0;
  }
