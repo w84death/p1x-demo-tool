@@ -14,6 +14,10 @@
 #include <time.h>
 #include <stdio.h>
 #include <iostream>
+#include <chrono>
+
+#include "synthesizer.h"
+
 /*
  * -----10--------20--------30--------40--------50--------60--------70-------80
  */
@@ -78,10 +82,11 @@ const char* fragmentShaderSource =
 
 char demo_name[32] = "CODENAME: SHADER C1TY";
 const double demo_length = 30.0f;
+
 bool demo_running = true;
+bool demo_paused = false;
 bool window_fullscreen = false;
 float resolution_scale = 1.0f;
-bool application_running = true;
 bool debug_show_stats = false;
 int window_width = 1280/2, window_height = 720/2;
 
@@ -90,49 +95,49 @@ int window_width = 1280/2, window_height = 720/2;
  * -----10--------20--------30--------40--------50--------60--------70-------80
  */
 void print_help() {
-    std::cout << "Usage: ./demo [options]\n\n"
-              << "Options:\n"
-              << "  --width <value>           Set window width\n"
-              << "  --height <value>          Set window height\n"
-              << "  --resolution-scale <value> Set resolution scale\n"
-              << "  --stats                   Show statistics\n"
-              << "  --window-fullscreen       Enable fullscreen mode\n"
-              << "  --help                    Display this help message\n"
-              << std::endl;
-}
+  std::cout << "Usage: ./demo [options]\n\n"
+  << "Options:\n"
+  << "  --width <value>           Set window width\n"
+  << "  --height <value>          Set window height\n"
+  << "  --resolution-scale <value> Set resolution scale\n"
+  << "  --stats                   Show statistics\n"
+  << "  --window-fullscreen       Enable fullscreen mode\n"
+  << "  --help                    Display this help message\n"
+  << std::endl;
+ }
 
 /*
  * -----10--------20--------30--------40--------50--------60--------70-------80
  */
 int main(int argc, char* argv[]) {
 
-    std::cout << "P1X DEMO TOOL V3 by w84death^P1X // (c) 2023.05\n"<< std::endl;
-    std::cout << "DEVELOPMENT VERSION. BUGS ARE EXPECTED. CTRL+C TO KILL THE DEMO.\n"<< std::endl;
+  std::cout << "P1X DEMO TOOL V3 by w84death^P1X // (c) 2023.05\n"<< std::endl;
+  std::cout << "DEVELOPMENT VERSION. BUGS ARE EXPECTED. CTRL+C TO KILL THE DEMO.\n"<< std::endl;
 
-    for (int i = 1; i < argc; ++i) {
-        std::string arg = argv[i];
+  for (int i = 1; i < argc; ++i) {
+    std::string arg = argv[i];
 
-        if (arg == "--help") {
-            print_help();
-            return 0;
-        } else if (arg == "--width" && i + 1 < argc) {
-            window_width = std::stof(argv[++i]);
-        } else if (arg == "--height" && i + 1 < argc) {
-            window_height = std::stof(argv[++i]);
-        } else if (arg == "--resolution-scale" && i + 1 < argc) {
-            resolution_scale = std::stof(argv[++i]);
+    if (arg == "--help") {
+      print_help();
+      return 0;
+     } else if (arg == "--width" && i + 1 < argc) {
+       window_width = std::stof(argv[++i]);
+      } else if (arg == "--height" && i + 1 < argc) {
+        window_height = std::stof(argv[++i]);
+       } else if (arg == "--resolution-scale" && i + 1 < argc) {
+         resolution_scale = std::stof(argv[++i]);
         } else if (arg == "--stats") {
-            debug_show_stats = true;
-        } else if (arg == "--window-fullscreen") {
-            window_fullscreen = true;
-        } else {
+          debug_show_stats = true;
+         } else if (arg == "--window-fullscreen") {
+           window_fullscreen = true;
+          } else {
             std::cout << "> Wrong argument: " << arg << std::endl;
             print_help();
             return 0;
-        }
-    }
+           }
+   }
 
-    std::cout << "> Initializing engine with:\n  - window resolution " << window_width << "x" << window_height << "\n  - internal rendering resolution " << window_width*resolution_scale << "x" << window_height*resolution_scale << " (scale " << resolution_scale << ")."<< std::endl;
+  std::cout << "> Initializing engine with:\n  - window resolution " << window_width << "x" << window_height << "\n  - internal rendering resolution " << window_width*resolution_scale << "x" << window_height*resolution_scale << " (scale " << resolution_scale << ")."<< std::endl;
 /*
  *
  * -----10--------20--------30--------40--------50--------60--------70-------80
@@ -202,32 +207,15 @@ int main(int argc, char* argv[]) {
  * ---10--------20--------30--------40--------50--------60--------70-------80
  */
 
-  struct timespec startTime, endTime,  initialTime;
-  clock_gettime(CLOCK_MONOTONIC, &initialTime);
-  long frameTimeNanoseconds;
-  double frameTimeMilliseconds,  demo_time;
+  float demo_time;
   XEvent event;
   float resolution[2] = {static_cast<float>(window_width), static_cast<float>(window_height)};
+  std::chrono::time_point<std::chrono::high_resolution_clock> start_time = std::chrono::high_resolution_clock::now();
+  std::chrono::time_point<std::chrono::high_resolution_clock> previous_time = start_time;
+
+  synthStart();
 
   while (demo_running) {
-    while (XPending(display)) {
-      XNextEvent(display, &event);
-      switch (event.type) {
-        case KeyPress: {
-          KeySym keysym = XLookupKeysym(&event.xkey, 0);
-
-          if (keysym == XK_Escape) {
-            demo_running = false;
-           }
-            break;
-         }
-        default:
-          break;
-       }
-     }
-    clock_gettime(CLOCK_MONOTONIC, &startTime);
-    demo_time = (endTime.tv_sec - initialTime.tv_sec) + (endTime.tv_nsec - initialTime.tv_nsec) / 1000000000.0;
-
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
@@ -250,12 +238,52 @@ int main(int argc, char* argv[]) {
 
     glXSwapBuffers(display, window);
 
-    clock_gettime(CLOCK_MONOTONIC, &endTime);
+    std::chrono::time_point<std::chrono::high_resolution_clock> current_time = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed_seconds = current_time - previous_time;
+    double deltaTime = elapsed_seconds.count();
+    previous_time = current_time;
+    double frameMs = deltaTime*1000;
 
-    // frameTimeNanoseconds = (endTime.tv_sec - startTime.tv_sec) * 1000000000L + (endTime.tv_nsec - startTime.tv_nsec);
-    // frameTimeMilliseconds = frameTimeNanoseconds / 1000000.0;
-    // printf("Frame time: %ld ns (%.2f ms)\n", frameTimeNanoseconds, frameTimeMilliseconds);
+    if(!demo_paused) demo_time += deltaTime;
+    if(demo_time > demo_length) demo_running = false;
 
+    if(debug_show_stats){
+      printf("%.0fx%.0f // %0.00f ms\nDemo Time %000.0fs\n", window_width*resolution_scale, window_height*resolution_scale, frameMs, demo_time);
+      debug_show_stats = false;
+     }
+
+    while (XPending(display)) {
+      XNextEvent(display, &event);
+      if (event.type == KeyPress){
+        KeySym key = XLookupKeysym(&event.xkey, 0);
+
+        if (key == XK_space) {
+          pause_playback.store(!pause_playback.load());
+          demo_paused = !demo_paused;
+         }else
+        if (key == XK_s) {
+          debug_show_stats = true;
+         }else
+        if (key >= 49 && key <= 57) {
+          if (event.xkey.state & ShiftMask) {
+            toggle_track_muted(key-49,false);
+           }else
+          toggle_track_muted(key-49,true);
+         }else
+        if (key == XK_Up || key == XK_Down || key == XK_Left || key == XK_Right) {
+          // Arrow key was pressed
+
+          if (event.xkey.state & ShiftMask) {
+           // Arrow + Shift key was pressed
+
+           }
+         }else
+        if (key == XK_Escape){
+          demo_running = false;
+          quit_playback = true;
+         }
+       }
+     }
    }
 
   /*
