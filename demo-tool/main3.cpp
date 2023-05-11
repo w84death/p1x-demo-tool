@@ -13,7 +13,7 @@
 #include <GL/glx.h>
 #include <time.h>
 #include <stdio.h>
-
+#include <iostream>
 /*
  * -----10--------20--------30--------40--------50--------60--------70-------80
  */
@@ -77,8 +77,8 @@ const char* fragmentShaderSource =
  */
 
 char demo_name[32] = "CODENAME: SHADER C1TY";
-const float demo_length = 60.0f;
-bool application_running = true;
+const double demo_length = 30.0f;
+bool demo_running = true;
 
 int window_width = 1280/2, window_height = 720/2;
 
@@ -87,8 +87,18 @@ int main() {
   int screen = DefaultScreen(display);
   Window rootWindow = RootWindow(display, screen);
 
-  GLint glxAttribs[] = {GLX_RGBA, GLX_DOUBLEBUFFER, GLX_DEPTH_SIZE, 24, GLX_STENCIL_SIZE, 8, None};
-  XVisualInfo *visualInfo = glXChooseVisual(display, screen, glxAttribs);
+  int visualAttr[] = {
+      GLX_RGBA,
+      GLX_DOUBLEBUFFER,
+      GLX_DEPTH_SIZE,     24,
+      GLX_STENCIL_SIZE,   8,
+      None
+  };
+  XVisualInfo* visualInfo = glXChooseVisual(display, screen, visualAttr);
+  if (visualInfo == NULL) {
+      fprintf(stderr, "No suitable visual found\n");
+      return -1;
+  }
 
   Window window = XCreateWindow(display, rootWindow, 10, 10, window_width, window_height, 0, visualInfo->depth, InputOutput, visualInfo->visual, 0, NULL);
   XMapWindow(display, window);
@@ -152,16 +162,15 @@ int main() {
   XEvent event;
   float resolution[2] = {static_cast<float>(window_width), static_cast<float>(window_height)};
 
-  while (application_running) {
+  while (demo_running) {
     while (XPending(display)) {
       XNextEvent(display, &event);
-
       switch (event.type) {
         case KeyPress: {
           KeySym keysym = XLookupKeysym(&event.xkey, 0);
 
           if (keysym == XK_Escape) {
-            application_running = false;
+            demo_running = false;
            }
             break;
          }
@@ -169,7 +178,6 @@ int main() {
           break;
        }
      }
-
     clock_gettime(CLOCK_MONOTONIC, &startTime);
     demo_time = (endTime.tv_sec - initialTime.tv_sec) + (endTime.tv_nsec - initialTime.tv_nsec) / 1000000000.0;
 
