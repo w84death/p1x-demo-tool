@@ -72,7 +72,7 @@ const char* vertexShaderSource =
 "}";
 
 const char* fragmentShaderSource =
-#include "shader.glsl"
+#include "demo.glsl"
 ;
 
 
@@ -87,14 +87,14 @@ bool demo_paused = false;
 bool window_fullscreen = false;
 float resolution_scale = 1.0f;
 bool debug_show_stats = false;
-int window_width = 1280/2, window_height = 720/2;
+int window_width = 1280, window_height = 720;
 
 /*
  * -----10--------20--------30--------40--------50--------60--------70-------80
  */
 int main(int argc, char* argv[]) {
 
-  std::cout << "P1X DEMO TOOL V3 by w84death^P1X // (c) 2023.05\n"<< std::endl;
+  std::cout << "P1X DEMO TOOL V3.1 by w84death^P1X // (c) 2023.08\n"<< std::endl;
   std::cout << "> Initializing engine with:\n  - window resolution " << window_width << "x" << window_height << "\n  - internal rendering resolution " << window_width*resolution_scale << "x" << window_height*resolution_scale << " (scale " << resolution_scale << ")."<< std::endl;
   std::cout << "DEVELOPMENT VERSION. BUGS ARE EXPECTED. CTRL+C TO KILL THE DEMO.\n"<< std::endl;
 /*
@@ -172,8 +172,6 @@ int main(int argc, char* argv[]) {
   std::chrono::time_point<std::chrono::high_resolution_clock> start_time = std::chrono::high_resolution_clock::now();
   std::chrono::time_point<std::chrono::high_resolution_clock> previous_time = start_time;
 
-  // synthStart();
-
   while (demo_running) {
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
@@ -216,12 +214,10 @@ int main(int argc, char* argv[]) {
       if (event.type == KeyPress){
         KeySym key = XLookupKeysym(&event.xkey, 0);
         if (key == XK_space) {
-          // pause_playback.store(!pause_playback.load());
           demo_paused = !demo_paused;
          }else
         if (key == XK_Escape){
           demo_running = false;
-          // quit_playback = true;
          }
        }
      }
@@ -230,7 +226,6 @@ int main(int argc, char* argv[]) {
   /*
    * ---10--------20--------30--------40--------50--------60--------70-------80
    */
-  // synthQuit();
   glXDestroyContext(display, glxContext);
   XDestroyWindow(display, window);
   XCloseDisplay(display);
